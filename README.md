@@ -187,11 +187,6 @@ Scrapes a public X post and returns structured data.
     "text": "Post content...",
     "images": ["https://...", "https://..."]
   },
-  "metrics": {
-    "likes": 0,
-    "retweets": 0,
-    "replies": 0
-  },
   "timestamp": "2024-01-15T12:00:00Z"
 }
 ```
@@ -200,8 +195,6 @@ Scrapes a public X post and returns structured data.
 - `400` - Invalid URL format
 - `404` - Post not found or deleted
 - `500` - Scraping failed or post structure changed
-
-**Note:** Metrics (likes, retweets, replies) are not easily available via HTML scraping and will return 0 in the MVP. To get real metrics, you'd need Puppeteer (JavaScript rendering) or X API access.
 
 ---
 
@@ -219,11 +212,12 @@ Page (Framer canvas)
 │   │   └── Card Preview Frame (name: "card-preview")
 │   │       ├── Author Section (avatar, name, handle)
 │   │       ├── Content Section (text, images)
-│   │       ├── Metrics Section (conditional)
 │   │       └── Timestamp Section (conditional)
 │   └── Controls Panel (right)
-│       ├── Toggle Stack (show metrics, show date)
-│       ├── Design Controls (radius, color, shadow, spacing)
+│       ├── Toggle: Show Date
+│       ├── Dropdown: Theme (light/dim/dark)
+│       ├── Dropdown: Border Radius (0px/8px/16px/20px/24px)
+│       ├── Dropdown: Shadow Intensity (none/light/medium/strong)
 │       └── Export Button (PNGExporter component)
 └── Footer
 ```
@@ -234,11 +228,10 @@ Create these variables in Framer to manage the app state:
 
 - `postUrl` (string) - User input URL
 - `postData` (object) - Fetched post data from API
-- `showMetrics` (boolean) - Toggle state for metrics
 - `showDate` (boolean) - Toggle state for timestamp
-- `borderRadius` (number) - Card border radius value
-- `bgColor` (string) - Card background color
-- `shadowIntensity` (string) - none/light/medium/strong
+- `theme` (string) - Theme selection: "light", "dim", or "dark"
+- `borderRadius` (string) - Border radius: "0px", "8px", "16px", "20px", or "24px"
+- `shadowIntensity` (string) - Shadow: "none", "light", "medium", or "strong"
 - `isLoading` (boolean) - Loading state
 - `errorMessage` (string) - Error message if fetch fails
 

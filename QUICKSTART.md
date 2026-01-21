@@ -77,13 +77,12 @@ You'll get a URL like: `https://your-project.vercel.app`
    Inside the `card-preview` frame, add:
    - **Author section**: Avatar (Image), Name (Text), Handle (Text)
    - **Content section**: Post text (Text), Images (Image)
-   - **Metrics section**: Likes, Retweets, Replies (Text)
-   - **Timestamp section**: Date/time (Text)
+   - **Timestamp section**: Date/time (Text) - optional display
 
 5. **Controls Panel**
-   - Add toggles: Show Metrics, Show Date
-   - Add sliders: Border Radius, Spacing
-   - Add color picker: Background Color
+   - Add toggle: Show Date
+   - Add dropdown: Theme (light/dim/dark)
+   - Add dropdown: Border Radius (0px/8px/16px/20px/24px)
    - Add dropdown: Shadow Intensity (none/light/medium/strong)
 
 6. **Export Section**
@@ -101,26 +100,27 @@ You'll get a URL like: `https://your-project.vercel.app`
 #### Create Framer Variables
 In Framer, create these variables to store state:
 - `postData` (Object) - Fetched post data
-- `showMetrics` (Boolean) - Toggle state
-- `showDate` (Boolean) - Toggle state
-- `borderRadius` (Number) - Slider value
-- `bgColor` (Color) - Color picker value
-- `shadowIntensity` (String) - Dropdown value
+- `showDate` (Boolean) - Toggle state for timestamp
+- `theme` (String) - Theme selection: "light", "dim", or "dark"
+- `borderRadius` (String) - Border radius: "0px", "8px", "16px", "20px", or "24px"
+- `shadowIntensity` (String) - Shadow: "none", "light", "medium", or "strong"
 
 #### Bind Data to Card UI
 1. For each text element in your card, bind to variables:
    - Author name → `postData.author.name`
    - Author handle → `postData.author.handle`
    - Post text → `postData.content.text`
-   - Etc.
+   - Timestamp → `postData.timestamp` (formatted)
 
 2. Use conditional visibility:
-   - Metrics section → visible when `showMetrics === true`
    - Timestamp section → visible when `showDate === true`
 
 3. Bind styling to controls:
    - Card frame border radius → `borderRadius` variable
-   - Card frame background → `bgColor` variable
+   - Card frame background/colors → based on `theme` variable:
+     - `light`: White background, dark text
+     - `dim`: Gray background (#15202B), light text
+     - `dark`: Black background, white text
    - Card frame shadow → based on `shadowIntensity` value
 
 ---

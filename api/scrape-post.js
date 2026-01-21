@@ -67,11 +67,6 @@ export default async function handler(req, res) {
         text: '',
         images: [],
       },
-      metrics: {
-        likes: 0,
-        retweets: 0,
-        replies: 0,
-      },
       timestamp: '',
     };
 
@@ -114,10 +109,6 @@ export default async function handler(req, res) {
       // Fallback: current timestamp
       postData.timestamp = new Date().toISOString();
     }
-
-    // Note: Metrics (likes, retweets, replies) are not easily available via meta tags
-    // They require JavaScript rendering or API access
-    // For MVP, we'll leave them as 0 or you can add Puppeteer for more robust scraping
 
     // Validate we got essential data
     if (!postData.author.name || !postData.content.text) {

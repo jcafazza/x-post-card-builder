@@ -39,16 +39,12 @@ Unlike existing tools that focus on screenshot generation for social sharing, th
 
 #### Customization Controls
 **Toggle Options:**
-- Post metrics (likes, retweets, replies) - on/off
 - Creation date/timestamp - on/off
-- Verified badge - on/off (if applicable)
 
 **Design Controls:**
-- Card border radius (slider or input)
-- Card background fill color (color picker)
-- Drop shadow effect (on/off, with intensity control)
-- Margin/padding around card elements
-- Internal spacing between elements
+- Theme selection (dropdown): "light", "dim", "dark"
+- Card border radius (dropdown): 0px, 8px, 16px, 20px, 24px
+- Drop shadow intensity (dropdown): none, light, medium, strong
 
 #### Post Content Display
 - Author avatar
@@ -56,7 +52,6 @@ Unlike existing tools that focus on screenshot generation for social sharing, th
 - Author handle (@username)
 - Post text content
 - Attached images (if present)
-- Post metrics (conditionally shown)
 - Timestamp (conditionally shown)
 
 #### Export Options
@@ -105,11 +100,6 @@ Unlike existing tools that focus on screenshot generation for social sharing, th
     "content": {
       "text": "Post content...",
       "images": ["url1", "url2"]
-    },
-    "metrics": {
-      "likes": 1234,
-      "retweets": 567,
-      "replies": 89
     },
     "timestamp": "2024-01-15T12:00:00Z"
   }
@@ -254,8 +244,8 @@ Unlike existing tools that focus on screenshot generation for social sharing, th
 **Afternoon:**
 - Connect all customization controls to card preview
 - Implement real-time updates as controls change
-- Add PNG export functionality using html-to-image
-- Test across different post types (text, images, metrics)
+- Add PNG export functionality using html2canvas
+- Test across different post types (text, images, with/without timestamp)
 
 ### Day 3: Polish + Testing
 **Morning:**
@@ -304,7 +294,7 @@ Unlike existing tools that focus on screenshot generation for social sharing, th
 ## Reference Inspiration
 
 - **BrandBird Tweet to Image Tool**: https://www.brandbird.app/tools/tweet-to-image
-  - Reference for toggle controls (metrics, theme)
+  - Reference for theme controls and execution quality
   - Execution quality benchmark
   - BUT: We focus more on embeddable cards with design control vs screenshot sharing
 

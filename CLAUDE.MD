@@ -125,7 +125,7 @@ x-post-visualizer/
 
 ### Libraries
 - `cheerio` - HTML parsing for scraping
-- `html-to-image` - PNG export in browser
+- `html2canvas` (via CDN) - PNG export in browser
 
 ### Deployment
 - Framer (frontend) - built-in hosting
@@ -136,10 +136,11 @@ x-post-visualizer/
 
 ```json
 {
-  "cheerio": "^1.0.0-rc.12",
-  "html-to-image": "^1.11.11"
+  "cheerio": "^1.0.0-rc.12"
 }
 ```
+
+**Note:** PNG export uses html2canvas loaded from CDN (no npm dependency needed)
 
 ## Custom Commands - Product Development Workflow
 
@@ -230,10 +231,13 @@ Commands follow a natural workflow but can be used independently.
 The scraper returns structured JSON matching Framer's needs:
 - `author` - Display name, handle, avatar, verified status
 - `content` - Post text and image URLs
-- `metrics` - Likes, retweets, replies (0 in MVP)
 - `timestamp` - Post creation time
 
-**Note on metrics:** Real engagement metrics require JavaScript rendering (Puppeteer) or X API access. MVP returns 0 since we're using lightweight Cheerio scraping. Can upgrade later if needed.
+**Customization Options:**
+- Theme: "light", "dim", "dark"
+- Border Radius: "0px", "8px", "16px", "20px", "24px"
+- Shadow Intensity: "none", "light", "medium", "strong"
+- Show Date: toggle
 
 ## Common Tasks
 
@@ -256,10 +260,10 @@ vercel --prod
 ```
 
 ### Framer Integration
-1. Install `html-to-image` in Framer Assets panel
-2. Copy code from `framer-components/` into Framer Code tab
-3. Update `API_ENDPOINT` in APIFetcher.tsx with your Vercel URL
-4. Apply overrides/components to your Framer design
+1. Copy code from `framer-components/` into Framer Code tab
+2. Update `API_ENDPOINT` in APIFetcher.tsx with your Vercel URL
+3. Apply overrides/components to your Framer design
+4. PNG export uses html2canvas from CDN (no package installation needed)
 
 ## Known Limitations
 
@@ -269,10 +273,11 @@ vercel --prod
 - Protected/private posts can't be scraped
 - Only works for public posts
 
-### Metrics Not Available
-- Cheerio can't scrape JavaScript-rendered metrics
-- MVP shows 0 for likes/retweets/replies
-- Solutions: Upgrade to Puppeteer OR use X API
+### Simplified MVP Scope
+- No metrics display (removed from MVP)
+- Focus on clean, customizable card design
+- Three theme options instead of infinite color choices
+- Fixed border radius values for consistency
 
 ### Rate Limiting
 - No rate limiting implemented in MVP
