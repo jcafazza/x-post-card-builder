@@ -1,0 +1,32 @@
+{
+  "name": "x-post-card-builder",
+  "version": "1.0.0",
+  "description": "Transform X (Twitter) posts into beautiful, customizable visual cards",
+  "main": "api/scrape-post.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "twitter",
+    "x",
+    "post",
+    "card",
+    "embed",
+    "framer",
+    "design"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.12",
+    "html-to-image": "^1.11.11"
+  },
+  "devDependencies": {
+    "vercel": "^33.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
