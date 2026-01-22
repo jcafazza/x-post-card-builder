@@ -12,8 +12,16 @@ export async function fetchPostData(url: string): Promise<PostData> {
   })
 
   if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to fetch post data')
+    try {
+      const error = await response.json()
+      throw new Error(error.error || `HTTP ${response.status}`)
+    } catch (e) {
+      // If response isn't JSON, throw a generic error with status code
+      if (e instanceof Error && e.message.startsWith('HTTP')) {
+        throw e
+      }
+      throw new Error(`Failed to fetch post data (${response.status})`)
+    }
   }
 
   return response.json()

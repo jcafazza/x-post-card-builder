@@ -35,7 +35,7 @@ export default function InteractivePostCard({ post, settings, onSettingsChange }
       if (isResizingWidth) {
         const deltaX = e.clientX - startXRef.current
         let newWidth: number
-        
+
         if (resizeTypeRef.current === 'width-left') {
           // Resizing from left: width decreases as we move left (deltaX is negative)
           newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, startWidthRef.current - deltaX))
@@ -43,7 +43,7 @@ export default function InteractivePostCard({ post, settings, onSettingsChange }
           // Resizing from right: width increases as we move right (deltaX is positive)
           newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, startWidthRef.current + deltaX))
         }
-        
+
         onSettingsChange({ ...settings, cardWidth: newWidth })
         setIndicatorValue(`width: ${Math.round(newWidth)}px`)
       } else if (isResizingRadius) {
@@ -65,7 +65,7 @@ export default function InteractivePostCard({ post, settings, onSettingsChange }
         const distance = Math.sqrt(
           Math.pow(e.clientX - corner.x, 2) + Math.pow(e.clientY - corner.y, 2)
         )
-        
+
         // Radius is proportional to distance from corner (accounting for the corner zone)
         const rawRadius = Math.max(0, Math.min(MAX_RADIUS, Math.max(0, distance - CORNER_ZONE)))
         // Snap to 4px increments
@@ -87,10 +87,11 @@ export default function InteractivePostCard({ post, settings, onSettingsChange }
     if (isResizingWidth || isResizingRadius) {
       document.addEventListener('mousemove', handleMouseMove)
       document.addEventListener('mouseup', handleMouseUp)
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove)
-        document.removeEventListener('mouseup', handleMouseUp)
-      }
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
     }
   }, [isResizingWidth, isResizingRadius, hoveredCorner, settings, onSettingsChange])
 

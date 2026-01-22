@@ -24,15 +24,21 @@ interface ToolbarProps {
 export default function Toolbar({ settings, onSettingsChange, currentTheme, onReset }: ToolbarProps) {
   const [isExporting, setIsExporting] = useState(false)
   const [clickedButton, setClickedButton] = useState<string | null>(null)
+  const [exportError, setExportError] = useState<string | null>(null)
 
   const handleExport = async () => {
     setIsExporting(true)
+    setExportError(null)
     setClickedButton('export')
     setTimeout(() => setClickedButton(null), 200)
     try {
       await exportElementToPNG('card-preview', 'x-post-card.png')
     } catch (error) {
       console.error('Export failed:', error)
+      const message = error instanceof Error ? error.message : 'Failed to export PNG'
+      setExportError(message)
+      // Auto-hide error after 5 seconds
+      setTimeout(() => setExportError(null), 5000)
     } finally {
       setIsExporting(false)
     }
@@ -50,7 +56,7 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
   const cycleShadow = () => {
     setClickedButton('shadow')
     setTimeout(() => setClickedButton(null), 200)
-    const intensities: ShadowIntensity[] = ['none', 'light', 'medium']
+    const intensities: ShadowIntensity[] = ['none', 'light', 'medium', 'strong']
     const currentIndex = intensities.indexOf(settings.shadowIntensity)
     const nextIndex = (currentIndex + 1) % intensities.length
     onSettingsChange({ ...settings, shadowIntensity: intensities[nextIndex] })
@@ -82,7 +88,22 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
   })
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="relative flex items-center gap-3">
+      {/* Export Error Message */}
+      {exportError && (
+        <div
+          className="absolute -top-14 left-1/2 -translate-x-1/2 px-3 py-2 rounded-lg border text-xs font-medium whitespace-nowrap animate-in fade-in slide-in-from-bottom-2 duration-200"
+          style={{
+            backgroundColor: currentTheme.bg,
+            borderColor: '#EF4444',
+            color: '#EF4444',
+            boxShadow: `0 4px 12px rgba(239, 68, 68, 0.2)`,
+          }}
+        >
+          {exportError}
+        </div>
+      )}
+
       {/* Theme Cycle Button */}
       <button
         onClick={cycleTheme}
@@ -102,12 +123,12 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
         style={getButtonStyle(true)}
         aria-label="Cycle Shadow"
       >
-        <Layers2 
-          className={iconClasses} 
-          strokeWidth={1.5} 
-          style={{ 
-            opacity: settings.shadowIntensity === 'none' ? 0.5 : settings.shadowIntensity === 'light' ? 0.75 : 1 
-          }} 
+        <Layers2
+          className={iconClasses}
+          strokeWidth={1.5}
+          style={{
+            opacity: settings.shadowIntensity === 'none' ? 0.5 : settings.shadowIntensity === 'light' ? 0.75 : 1
+          }}
         />
       </button>
 

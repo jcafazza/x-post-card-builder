@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import InteractivePostCard from '@/components/InteractivePostCard'
 import Toolbar from '@/components/Toolbar'
 import URLInput from '@/components/URLInput'
@@ -9,7 +9,7 @@ import { getRandomPlaceholder } from '@/lib/placeholder'
 import { getThemeStyles } from '@/lib/themes'
 
 export default function Home() {
-  const [post, setPost] = useState<PostData | null>(null)
+  const [post, setPost] = useState<PostData | null>(getRandomPlaceholder())
   const [settings, setSettings] = useState<CardSettings>({
     theme: 'light',
     borderRadius: '20',
@@ -26,11 +26,6 @@ export default function Home() {
       customBorderRadius: 20,
     })
   }
-
-  // Load placeholder content on mount
-  useEffect(() => {
-    setPost(getRandomPlaceholder())
-  }, [])
 
   const theme = getThemeStyles(settings.theme)
 
