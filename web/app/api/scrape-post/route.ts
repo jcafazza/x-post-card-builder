@@ -1,17 +1,17 @@
 /**
  * X Post Scraper API Route
  *
- * Uses Puppeteer headless browser to scrape X posts by:
+ * Uses Puppeteer (with @sparticuz/chromium for Vercel) to scrape X posts by:
  * 1. Loading the page in a real browser
  * 2. Waiting for JavaScript to render
  * 3. Extracting post data from the DOM
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import puppeteer from 'puppeteer'
+import puppeteer from 'puppeteer-core'
+import chromium from '@sparticuz/chromium-min'
 
 // Sample posts for demo mode
-// Type any of these keywords to load a sample post
 const SAMPLE_POSTS: Record<string, {
   author: { name: string; handle: string; avatar: string; verified: boolean }
   content: { text: string; images: string[] }
@@ -84,6 +84,9 @@ const SAMPLE_POSTS: Record<string, {
   },
 }
 
+// Helper to determine if we are running in a local environment
+const isLocal = process.env.NODE_ENV === 'development' || !process.env.VERCEL
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -97,7 +100,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check for demo/sample mode - supports multiple keywords
+    // Check for demo/sample mode
     const keyword = url.toLowerCase().trim()
     if (SAMPLE_POSTS[keyword]) {
       return NextResponse.json(SAMPLE_POSTS[keyword])
@@ -114,23 +117,30 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const [, , username, tweetId] = match
+    const [, , username] = match
 
-    // Use Puppeteer to load the page and extract data
+    // Configure Puppeteer for production (Vercel) vs Local
     let browser = null
     try {
-      console.log(`Launching browser for ${url}...`)
+      console.log(`Launching browser for ${url}... environment: ${isLocal ? 'local' : 'production'}`)
 
-      browser = await puppeteer.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-        ],
-      })
+      const options = isLocal 
+        ? {
+            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            // Path to local Chrome/Chromium executable
+            executablePath: process.platform === 'darwin' 
+              ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+              : '/usr/bin/google-chrome',
+            headless: true,
+          }
+        : {
+            args: chromium.args,
+            defaultViewport: chromium.defaultViewport,
+            executablePath: await chromium.executablePath(),
+            headless: chromium.headless,
+          }
 
+      browser = await puppeteer.launch(options)
       const page = await browser.newPage()
 
       // Set a realistic viewport and user agent
@@ -140,11 +150,11 @@ export async function POST(request: NextRequest) {
       // Navigate to the post
       await page.goto(url, {
         waitUntil: 'networkidle2',
-        timeout: 15000
+        timeout: 20000 // Increased timeout for serverless
       })
 
       // Wait for the tweet content to load
-      await page.waitForSelector('article[data-testid="tweet"]', { timeout: 10000 })
+      await page.waitForSelector('article[data-testid="tweet"]', { timeout: 15000 })
 
       // Extract data from the rendered page
       const postData = await page.evaluate(() => {
@@ -177,7 +187,6 @@ export async function POST(request: NextRequest) {
         const imageEls = article.querySelectorAll('[data-testid="tweetPhoto"] img') as NodeListOf<HTMLImageElement>
         imageEls.forEach(img => {
           if (img.src && !img.src.includes('profile_images')) {
-            // Get the highest quality version
             const highQualitySrc = img.src.replace(/&name=\w+/, '&name=large')
             images.push(highQualitySrc)
           }
@@ -206,7 +215,6 @@ export async function POST(request: NextRequest) {
       browser = null
 
       if (postData && postData.content.text) {
-        // Use unavatar as fallback for avatar if not found
         if (!postData.author.avatar) {
           postData.author.avatar = `https://unavatar.io/twitter/${username}`
         }
@@ -220,12 +228,8 @@ export async function POST(request: NextRequest) {
 
     } catch (browserError: any) {
       console.error('Browser scraping error:', browserError.message)
+      if (browser) await browser.close()
 
-      if (browser) {
-        await browser.close()
-      }
-
-      // Return helpful error message
       return NextResponse.json(
         {
           error: browserError.message?.includes('timeout')
@@ -245,14 +249,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * Handle OPTIONS for CORS preflight
- *
- * Security note: In production, configure ALLOWED_ORIGIN environment variable
- * to restrict access to your domain only.
- */
 export async function OPTIONS() {
-  const allowedOrigin = process.env.ALLOWED_ORIGIN || 'http://localhost:3000'
+  const allowedOrigin = process.env.ALLOWED_ORIGIN || '*'
 
   return new NextResponse(null, {
     status: 200,
