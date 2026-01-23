@@ -11,6 +11,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import puppeteer from 'puppeteer-core'
 import chromium from '@sparticuz/chromium-min'
 
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+// Give the serverless function enough time for network variability.
+export const maxDuration = 30
+
 // Sample posts for demo mode
 const SAMPLE_POSTS: Record<string, {
   author: { name: string; handle: string; avatar: string; verified: boolean }
@@ -87,6 +92,38 @@ const SAMPLE_POSTS: Record<string, {
 // Helper to determine if we are running in a local environment
 const isLocal = process.env.NODE_ENV === 'development' || !process.env.VERCEL
 
+type SyndicationTweet = {
+  text?: string
+  created_at?: string
+  user?: {
+    name?: string
+    screen_name?: string
+    profile_image_url_https?: string
+    verified?: boolean
+  }
+  photos?: Array<{ url?: string }>
+  mediaDetails?: Array<{ media_url_https?: string }>
+}
+
+async function fetchViaSyndication(tweetId: string): Promise<SyndicationTweet> {
+  // This endpoint is fast and avoids running a headless browser in production.
+  const endpoint = `https://cdn.syndication.twimg.com/tweet-result?id=${encodeURIComponent(tweetId)}&lang=en`
+  const response = await fetch(endpoint, {
+    headers: {
+      // Some CDNs behave better with a real UA.
+      'User-Agent':
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      Accept: 'application/json',
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error(`Syndication fetch failed (HTTP ${response.status})`)
+  }
+
+  return response.json()
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -117,7 +154,41 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const [, , username] = match
+    const [, , username, tweetId] = match
+
+    // --- Production path: fast syndication fetch (no headless browser) ---
+    try {
+      const data = await fetchViaSyndication(tweetId)
+      const text = data.text ?? ''
+      const images = Array.isArray(data.photos)
+        ? data.photos.map((p) => p?.url).filter(Boolean) as string[]
+        : Array.isArray(data.mediaDetails)
+          ? data.mediaDetails.map((m) => m?.media_url_https).filter(Boolean) as string[]
+          : []
+
+      const name = data.user?.name || username
+      const handle = data.user?.screen_name ? `@${data.user.screen_name}` : `@${username}`
+      const avatar = data.user?.profile_image_url_https || `https://unavatar.io/twitter/${username}`
+      const verified = Boolean(data.user?.verified)
+      const timestamp = data.created_at ? new Date(data.created_at).toISOString() : new Date().toISOString()
+
+      if (text) {
+        return NextResponse.json({
+          author: { name, handle, avatar, verified },
+          content: { text, images },
+          timestamp,
+        })
+      }
+    } catch (e) {
+      // If syndication fails, fall through to the (slower) Puppeteer path in local dev.
+      console.warn('Syndication scrape failed:', e instanceof Error ? e.message : e)
+      if (!isLocal) {
+        return NextResponse.json(
+          { error: 'Could not load post in production. Try again or use: demo, startup, code, ai, product' },
+          { status: 503 }
+        )
+      }
+    }
 
     // Configure Puppeteer for production (Vercel) vs Local
     let browser = null
