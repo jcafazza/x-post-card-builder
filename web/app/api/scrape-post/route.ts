@@ -8,8 +8,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import puppeteer from 'puppeteer-core'
-import chromium from '@sparticuz/chromium-min'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -88,9 +86,6 @@ const SAMPLE_POSTS: Record<string, {
     timestamp: new Date().toISOString(),
   },
 }
-
-// Helper to determine if we are running in a local environment
-const isLocal = process.env.NODE_ENV === 'development' || !process.env.VERCEL
 
 type SyndicationTweet = {
   text?: string
@@ -322,154 +317,12 @@ export async function POST(request: NextRequest) {
       console.warn('oEmbed scrape failed:', e instanceof Error ? e.message : e)
     }
 
-    // In production, stop here (headless browser is too unreliable/slow for Vercel serverless).
-    if (!isLocal) {
-      return NextResponse.json(
-        { error: 'Could not load post. Try: demo, startup, code, ai, or product' },
-        { status: 503 }
-      )
-    }
-
-    // Configure Puppeteer for production (Vercel) vs Local
-    let browser = null
-    try {
-      console.log(`Launching browser for ${url}... environment: ${isLocal ? 'local' : 'production'}`)
-
-      // `@sparticuz/chromium-min`'s `headless` type can differ across versions.
-      // Puppeteer expects `true` or `"shell"`; we normalize to a safe value.
-      const chromiumHeadless = (chromium as any).headless as unknown
-      const headless: true | 'shell' = chromiumHeadless === 'shell' ? 'shell' : true
-
-      const options = isLocal 
-        ? {
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
-            executablePath: process.platform === 'darwin' 
-              ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-              : '/usr/bin/google-chrome',
-            headless: true,
-          }
-        : {
-            args: chromium.args,
-            defaultViewport: chromium.defaultViewport,
-            executablePath: await chromium.executablePath('https://github.com/Sparticuz/chromium/releases/download/v132.0.0/chromium-v132.0.0-pack.tar'),
-            headless,
-          }
-
-      // Explicitly cast options as any to bypass strict LaunchOptions typing which varies between local/prod deps
-      browser = await puppeteer.launch(options as any)
-      const page = await browser.newPage()
-
-      // Set a realistic viewport and user agent
-      await page.setViewport({ width: 1280, height: 800 })
-      await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
-
-      // Navigate to the post
-      await page.goto(url, {
-        waitUntil: 'networkidle2',
-        timeout: 25000 // Increased timeout for serverless cold starts
-      })
-
-      // Wait for the tweet content to load
-      await page.waitForSelector('article[data-testid="tweet"]', { timeout: 15000 })
-
-      // Extract data from the rendered page
-      const postData = await page.evaluate(() => {
-        const article = document.querySelector('article[data-testid="tweet"]')
-        if (!article) return null
-
-        // Get author info
-        const userNameEl = article.querySelector('[data-testid="User-Name"]')
-        const displayName = userNameEl?.querySelector('span')?.textContent || ''
-        const handleEl = userNameEl?.querySelectorAll('span')
-        let handle = ''
-        handleEl?.forEach(span => {
-          const text = span.textContent || ''
-          if (text.startsWith('@')) handle = text
-        })
-
-        // Get avatar
-        const avatarImg = article.querySelector('img[src*="profile_images"]') as HTMLImageElement
-        let avatar = avatarImg?.src || ''
-        if (avatar) {
-          // Normalize to 400x400 and strip query params
-          avatar = avatar.split('?')[0].replace(/_(normal|bigger|mini)(\.(jpg|png|jpeg|webp))$/i, '_400x400$2')
-        }
-
-        // Check for verified badge
-        const verified = !!article.querySelector('[data-testid="icon-verified"]')
-
-        // Get tweet text
-        const tweetTextEl = article.querySelector('[data-testid="tweetText"]')
-        const text = tweetTextEl?.textContent || ''
-
-        // Get images
-        const images: string[] = []
-        // Look for tweet photos
-        const imageEls = article.querySelectorAll('[data-testid="tweetPhoto"] img') as NodeListOf<HTMLImageElement>
-        imageEls.forEach(img => {
-          if (img.src && !img.src.includes('profile_images')) {
-            // Normalize to large version
-            const baseUrl = img.src.split('?')[0]
-            images.push(`${baseUrl}?format=jpg&name=large`)
-          }
-        })
-        
-        // If no photos, look for video posters
-        if (images.length === 0) {
-          const videoPoster = article.querySelector('video')?.getAttribute('poster')
-          if (videoPoster) {
-            const baseUrl = videoPoster.split('?')[0]
-            images.push(`${baseUrl}?format=jpg&name=large`)
-          }
-        }
-
-        // Get timestamp
-        const timeEl = article.querySelector('time')
-        const timestamp = timeEl?.getAttribute('datetime') || new Date().toISOString()
-
-        return {
-          author: {
-            name: displayName,
-            handle: handle || '@unknown',
-            avatar: avatar || '',
-            verified,
-          },
-          content: {
-            text,
-            images,
-          },
-          timestamp,
-        }
-      })
-
-      await browser.close()
-      browser = null
-
-      if (postData && postData.content.text) {
-        if (!postData.author.avatar) {
-          postData.author.avatar = `https://unavatar.io/twitter/${username}`
-        }
-        return NextResponse.json(postData)
-      }
-
-      return NextResponse.json(
-        { error: 'Could not extract post content. The post may be protected.' },
-        { status: 404 }
-      )
-
-    } catch (browserError: any) {
-      console.error('Browser scraping error:', browserError.message)
-      if (browser) await browser.close()
-
-      return NextResponse.json(
-        {
-          error: browserError.message?.includes('timeout')
-            ? 'Page took too long to load. Try again.'
-            : 'Could not load post. Try: demo, startup, code, ai, or product'
-        },
-        { status: 503 }
-      )
-    }
+    // Stop here: this API uses the fast syndication + oEmbed endpoints only.
+    // Headless browser scraping is intentionally avoided for Vercel reliability.
+    return NextResponse.json(
+      { error: 'Could not load post. Try: demo, startup, code, ai, or product' },
+      { status: 503 }
+    )
 
   } catch (error: any) {
     console.error('Scraping error:', error)
