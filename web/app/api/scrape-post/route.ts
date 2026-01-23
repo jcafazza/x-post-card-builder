@@ -143,11 +143,24 @@ function normalizeAvatarUrl(url?: string): string | undefined {
   return normalized
 }
 
+function proxyImageUrl(url?: string): string {
+  if (!url) return ''
+  // If already proxied/relative, leave as-is.
+  if (url.startsWith('/')) return url
+  if (!url.startsWith('http')) return url
+  return `/api/image?url=${encodeURIComponent(url)}`
+}
+
+function proxyImageUrls(urls: string[]): string[] {
+  return urls.map((u) => proxyImageUrl(u)).filter(Boolean)
+}
+
 /**
  * Extracts high-quality images from the syndication response.
  */
 function extractMedia(data: SyndicationTweet): string[] {
   const images: string[] = []
+  const anyData = data as any
 
   // 1. Try photos array (standard images)
   if (data.photos && Array.isArray(data.photos)) {
@@ -163,6 +176,26 @@ function extractMedia(data: SyndicationTweet): string[] {
     })
   }
 
+  // 2b. Extra brute-force paths (payload shape can vary)
+  const altMediaLists: any[] = [
+    anyData?.entities?.media,
+    anyData?.extended_entities?.media,
+    anyData?.media,
+    anyData?.media_details,
+  ].filter(Boolean)
+  for (const list of altMediaLists) {
+    if (!Array.isArray(list)) continue
+    for (const m of list) {
+      const u =
+        m?.media_url_https ||
+        m?.media_url ||
+        m?.url ||
+        m?.mediaUrl ||
+        m?.src
+      if (typeof u === 'string' && u) images.push(u)
+    }
+  }
+
   // 3. Try video poster as a fallback for video/gif posts
   if (images.length === 0 && data.video?.poster) {
     images.push(data.video.poster)
@@ -170,7 +203,7 @@ function extractMedia(data: SyndicationTweet): string[] {
 
   // Deduplicate and normalize URLs to get the highest quality
   return Array.from(new Set(images)).map((url) => {
-    if (url.includes('pbs.twimg.com/media/')) {
+    if (url.includes('pbs.twimg.com/')) {
       // Ensure we get the large version and prefer jpg format for compatibility
       const baseUrl = url.split('?')[0]
       return `${baseUrl}?format=jpg&name=large`
@@ -283,8 +316,10 @@ async function fetchViaSyndication(tweetId: string): Promise<SyndicationTweet> {
       // Some CDNs behave better with a real UA.
       'User-Agent':
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      Referer: 'https://platform.twitter.com/',
       Accept: 'application/json',
     },
+    cache: 'no-store',
   })
 
   if (!response.ok) {
@@ -292,6 +327,54 @@ async function fetchViaSyndication(tweetId: string): Promise<SyndicationTweet> {
   }
 
   return response.json()
+}
+
+type SyndicationEmbed = {
+  text: string
+  avatar?: string
+  images: string[]
+}
+
+async function fetchViaSyndicationEmbed(tweetId: string): Promise<SyndicationEmbed> {
+  const endpoint = `https://cdn.syndication.twimg.com/tweet?id=${encodeURIComponent(tweetId)}&lang=en`
+  const response = await fetch(endpoint, {
+    headers: {
+      'User-Agent':
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      Referer: 'https://platform.twitter.com/',
+      Accept: 'text/html,*/*;q=0.8',
+    },
+    cache: 'no-store',
+  })
+
+  if (!response.ok) {
+    throw new Error(`Syndication embed fetch failed (HTTP ${response.status})`)
+  }
+
+  const html = await response.text()
+
+  // Extract text from common embed markup
+  const textMatch =
+    html.match(/<p[^>]*class="[^"]*Tweet-text[^"]*"[^>]*>([\s\S]*?)<\/p>/i) ||
+    html.match(/<p[^>]*>([\s\S]*?)<\/p>/i)
+  const raw = textMatch?.[1] ?? ''
+  const text = decodeHtmlEntities(
+    raw
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .trim()
+  )
+
+  // Extract images + avatar by scanning <img src="...">
+  const imgSrcs = Array.from(html.matchAll(/<img[^>]+src="([^"]+)"/gi)).map((m) => m[1])
+  const avatar = imgSrcs.find((s) => s.includes('profile_images'))
+  const images = imgSrcs.filter((s) => !s.includes('profile_images') && s.includes('pbs.twimg.com/'))
+
+  return {
+    text,
+    avatar,
+    images: Array.from(new Set(images)),
+  }
 }
 
 type OEmbedResponse = {
@@ -394,20 +477,43 @@ export async function POST(request: NextRequest) {
       const handle = data.user?.screen_name ? `@${data.user.screen_name}` : `@${username}`
       
       // Use the improved avatar normalization
-      const avatar = normalizeAvatarUrl(data.user?.profile_image_url_https) || `https://unavatar.io/twitter/${username}`
+      const avatarRaw = normalizeAvatarUrl(data.user?.profile_image_url_https) || `https://unavatar.io/twitter/${username}`
       
       const verified = Boolean(data.user?.verified || data.user?.is_blue_verified)
       const timestamp = data.created_at ? new Date(data.created_at).toISOString() : new Date().toISOString()
 
       if (text || images.length > 0) {
         return NextResponse.json({
-          author: { name, handle, avatar, verified },
-          content: { text, images },
+          author: { name, handle, avatar: proxyImageUrl(avatarRaw), verified },
+          content: { text, images: proxyImageUrls(images) },
           timestamp,
         })
       }
     } catch (e) {
       console.warn('Syndication scrape failed:', e instanceof Error ? e.message : e)
+    }
+
+    // 1b) Brute-force fallback: syndication embed HTML (often works when JSON is brittle)
+    try {
+      const embed = await fetchViaSyndicationEmbed(tweetId)
+      const images = extractMedia({ photos: embed.images.map((url) => ({ url })) } as any)
+      const text = cleanTweetText(embed.text, { hasImages: images.length > 0, mediaShortUrls: new Set() })
+
+      if (text || images.length > 0) {
+        const avatarRaw = normalizeAvatarUrl(embed.avatar) || `https://unavatar.io/twitter/${username}`
+        return NextResponse.json({
+          author: {
+            name: username,
+            handle: `@${username}`,
+            avatar: proxyImageUrl(avatarRaw),
+            verified: false,
+          },
+          content: { text, images: proxyImageUrls(images) },
+          timestamp: new Date().toISOString(),
+        })
+      }
+    } catch (e) {
+      console.warn('Syndication embed scrape failed:', e instanceof Error ? e.message : e)
     }
 
     // 2) Fallback: oEmbed (works even for very old posts; text-only, no images).
@@ -422,7 +528,7 @@ export async function POST(request: NextRequest) {
           author: {
             name: oembed.author_name || username,
             handle: oembed.author_name ? `@${oembed.author_name}` : `@${username}`,
-            avatar: `https://unavatar.io/twitter/${oembed.author_name || username}`,
+            avatar: proxyImageUrl(`https://unavatar.io/twitter/${oembed.author_name || username}`),
             verified: false,
           },
           content: { text, images: [] },

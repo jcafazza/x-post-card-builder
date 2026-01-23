@@ -34,10 +34,18 @@ export default function InteractivePostCard({ post, settings, onSettingsChange }
 
   const theme = getThemeStyles(settings.theme)
 
+  const setGlobalCursor = (cursor: string) => {
+    // Safari can ignore body cursor changes during active drags; setting on <html>
+    // tends to be more reliable across browsers.
+    document.documentElement.style.cursor = cursor
+    document.body.style.cursor = cursor
+  }
+
   // Handle mouse move for resizing
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (isResizingWidth) {
+        setGlobalCursor('ew-resize')
         const deltaX = e.clientX - startXRef.current
         let rawWidth: number
 
@@ -57,6 +65,14 @@ export default function InteractivePostCard({ post, settings, onSettingsChange }
       } else if (isResizingRadius) {
         const cardRect = cardRef.current?.getBoundingClientRect()
         if (!cardRect) return
+
+        const cursorMap: Record<string, string> = {
+          'top-left': 'nwse-resize',
+          'top-right': 'nesw-resize',
+          'bottom-left': 'nesw-resize',
+          'bottom-right': 'nwse-resize',
+        }
+        if (hoveredCorner) setGlobalCursor(cursorMap[hoveredCorner] || 'default')
 
         // Calculate distance from corner to determine border radius
         const corners = {
@@ -88,7 +104,7 @@ export default function InteractivePostCard({ post, settings, onSettingsChange }
       setIsResizingRadius(false)
       resizeTypeRef.current = null
       setHoveredCorner(null)
-      document.body.style.cursor = 'default'
+      setGlobalCursor('default')
       
       // Smooth fade-out for indicator using framework timing
       if (indicatorFadeOutTimerRef.current) {
@@ -120,6 +136,7 @@ export default function InteractivePostCard({ post, settings, onSettingsChange }
     setIsIndicatorVisible(true)
 
     if (type === 'width-left' || type === 'width-right') {
+      setGlobalCursor('ew-resize')
       setIsResizingWidth(true)
       resizeTypeRef.current = type
       startXRef.current = e.clientX
@@ -128,6 +145,13 @@ export default function InteractivePostCard({ post, settings, onSettingsChange }
       startWidthRef.current = snappedStartWidth
       setIndicatorValue(`width: ${snappedStartWidth}px`)
     } else if (type === 'corner' && corner) {
+      const cursorMap: Record<string, string> = {
+        'top-left': 'nwse-resize',
+        'top-right': 'nesw-resize',
+        'bottom-left': 'nesw-resize',
+        'bottom-right': 'nwse-resize',
+      }
+      setGlobalCursor(cursorMap[corner] || 'default')
       setIsResizingRadius(true)
       setHoveredCorner(corner)
       startRadiusRef.current = settings.customBorderRadius
@@ -184,21 +208,21 @@ export default function InteractivePostCard({ post, settings, onSettingsChange }
         'bottom-left': 'nesw-resize',
         'bottom-right': 'nwse-resize',
       }
-      document.body.style.cursor = cursorMap[nearCorner] || 'default'
+      setGlobalCursor(cursorMap[nearCorner] || 'default')
       setHoveredCorner(nearCorner)
     } else if (Math.abs(clientX - left) < 8 || Math.abs(clientX - right) < 8) {
       // Near left or right edge (but not corner)
-      document.body.style.cursor = 'ew-resize'
+      setGlobalCursor('ew-resize')
       setHoveredCorner(null)
     } else {
-      document.body.style.cursor = 'default'
+      setGlobalCursor('default')
       setHoveredCorner(null)
     }
   }
 
   const handleMouseLeave = () => {
     if (!isResizingWidth && !isResizingRadius) {
-      document.body.style.cursor = 'default'
+      setGlobalCursor('default')
       setHoveredCorner(null)
     }
   }

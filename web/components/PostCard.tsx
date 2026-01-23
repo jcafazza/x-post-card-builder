@@ -3,7 +3,6 @@
 import { PostData, CardSettings, ShadowIntensity } from '@/types/post'
 import { getThemeStyles } from '@/lib/themes'
 import { formatTimestamp } from '@/lib/utils'
-import Image from 'next/image'
 import { ANIMATION_STANDARD, ANIMATION_DELIBERATE, EASING_STANDARD } from '@/constants/ui'
 
 interface PostCardProps {
@@ -53,13 +52,14 @@ export default function PostCard({ post, settings }: PostCardProps) {
       <div className="flex items-start gap-3 mb-4">
         <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
           {post.author.avatar ? (
-            <Image
+            <img
               src={post.author.avatar}
               alt={post.author.name}
-              fill
-              className="object-cover"
-              unoptimized
+              className="w-full h-full object-cover"
               draggable={false}
+              loading="eager"
+              crossOrigin="anonymous"
+              referrerPolicy="no-referrer"
             />
           ) : (
             <div
@@ -123,13 +123,14 @@ export default function PostCard({ post, settings }: PostCardProps) {
                   boxShadow: `inset 0 0 0 1px ${theme.imageInnerStroke}`,
                 }}
               >
-                <Image
+                <img
                   src={image}
                   alt={`Post image ${index + 1}`}
-                  fill
-                  className="object-cover"
-                  unoptimized
+                  className="absolute inset-0 w-full h-full object-cover"
                   draggable={false}
+                  loading="eager"
+                  crossOrigin="anonymous"
+                  referrerPolicy="no-referrer"
                 />
               </div>
             ))}
