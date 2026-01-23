@@ -155,24 +155,64 @@ function proxyImageUrls(urls: string[]): string[] {
   return urls.map((u) => proxyImageUrl(u)).filter(Boolean)
 }
 
+type NormalizedMedia = { url: string; kind: 'photo' | 'thumb' }
+
+function normalizeTwimgMediaUrl(input?: string): NormalizedMedia | null {
+  if (!input || typeof input !== 'string') return null
+  if (!input.startsWith('http')) return null
+
+  let u: URL
+  try {
+    u = new URL(input)
+  } catch {
+    return null
+  }
+
+  const host = u.hostname.toLowerCase()
+  if (host !== 'pbs.twimg.com' && !host.endsWith('.twimg.com')) return null
+
+  const path = u.pathname
+
+  // Never treat avatars/icons/etc as tweet media.
+  if (path.includes('/profile_images/')) return null
+
+  // Ignore non-tweet media assets that often appear in embeds.
+  if (path.includes('/card_img/')) return null
+  if (path.includes('/semantic_core_img/')) return null
+
+  const isPhoto = path.includes('/media/')
+  const isThumb =
+    path.includes('/ext_tw_video_thumb/') ||
+    path.includes('/amplify_video_thumb/') ||
+    path.includes('/tweet_video_thumb/')
+
+  if (!isPhoto && !isThumb) return null
+
+  const baseUrl = `${u.origin}${u.pathname}`
+  return {
+    url: `${baseUrl}?format=jpg&name=large`,
+    kind: isPhoto ? 'photo' : 'thumb',
+  }
+}
+
 /**
  * Extracts high-quality images from the syndication response.
  */
 function extractMedia(data: SyndicationTweet): string[] {
-  const images: string[] = []
+  const rawCandidates: string[] = []
   const anyData = data as any
 
   // 1. Try photos array (standard images)
   if (data.photos && Array.isArray(data.photos)) {
     data.photos.forEach((p) => {
-      if (p?.url) images.push(p.url)
+      if (p?.url) rawCandidates.push(p.url)
     })
   }
 
   // 2. Try mediaDetails (often contains video thumbnails/gifs or high-res variants)
   if (data.mediaDetails && Array.isArray(data.mediaDetails)) {
     data.mediaDetails.forEach((m) => {
-      if (m?.media_url_https) images.push(m.media_url_https)
+      if (m?.media_url_https) rawCandidates.push(m.media_url_https)
     })
   }
 
@@ -192,24 +232,36 @@ function extractMedia(data: SyndicationTweet): string[] {
         m?.url ||
         m?.mediaUrl ||
         m?.src
-      if (typeof u === 'string' && u) images.push(u)
+      if (typeof u === 'string' && u) rawCandidates.push(u)
     }
   }
 
-  // 3. Try video poster as a fallback for video/gif posts
-  if (images.length === 0 && data.video?.poster) {
-    images.push(data.video.poster)
+  // 3. Video poster as a fallback (only helps for video/GIF posts)
+  if (data.video?.poster) {
+    rawCandidates.push(data.video.poster)
   }
 
-  // Deduplicate and normalize URLs to get the highest quality
-  return Array.from(new Set(images)).map((url) => {
-    if (url.includes('pbs.twimg.com/')) {
-      // Ensure we get the large version and prefer jpg format for compatibility
-      const baseUrl = url.split('?')[0]
-      return `${baseUrl}?format=jpg&name=large`
-    }
-    return url
-  })
+  const normalized: NormalizedMedia[] = []
+  for (const c of rawCandidates) {
+    const n = normalizeTwimgMediaUrl(c)
+    if (n) normalized.push(n)
+  }
+
+  // If the tweet has real photos, drop video thumbs (they often cause "extra" broken images).
+  const hasPhotos = normalized.some((m) => m.kind === 'photo')
+  const filtered = hasPhotos ? normalized.filter((m) => m.kind === 'photo') : normalized
+
+  // Deduplicate while preserving order, and cap to a reasonable max.
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const m of filtered) {
+    if (seen.has(m.url)) continue
+    seen.add(m.url)
+    out.push(m.url)
+    if (out.length >= 4) break
+  }
+
+  return out
 }
 
 function extractBestText(data: SyndicationTweet): string {
@@ -398,12 +450,16 @@ async function fetchViaSyndicationEmbed(tweetId: string): Promise<SyndicationEmb
   // Extract images + avatar by scanning <img src="...">
   const imgSrcs = Array.from(html.matchAll(/<img[^>]+src="([^"]+)"/gi)).map((m) => m[1])
   const avatar = imgSrcs.find((s) => s.includes('profile_images'))
-  const images = imgSrcs.filter((s) => !s.includes('profile_images') && s.includes('pbs.twimg.com/'))
+  const images = imgSrcs
+    .map((s) => normalizeTwimgMediaUrl(s))
+    .filter((v): v is NormalizedMedia => Boolean(v))
+    .filter((v) => v.kind === 'photo')
+    .map((v) => v.url)
 
   return {
     text,
     avatar,
-    images: Array.from(new Set(images)),
+    images: Array.from(new Set(images)).slice(0, 4),
   }
 }
 
