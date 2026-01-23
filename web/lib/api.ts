@@ -1,9 +1,7 @@
 import { PostData } from '@/types/post'
 
-const API_ENDPOINT = process.env.NEXT_PUBLIC_API_ENDPOINT || 'http://localhost:3000/api/scrape-post'
-
 export async function fetchPostData(url: string): Promise<PostData> {
-  const response = await fetch(API_ENDPOINT, {
+  const response = await fetch('/api/scrape-post', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

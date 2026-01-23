@@ -82,7 +82,7 @@ web/
 - Real-time card preview with live updates
 - Three theme options (light/dim/dark) with opacity-based colors
 - Customizable border radius (0px/8px/16px/20px/24px)
-- Adjustable shadow intensity (none/light/medium/strong)
+- Adjustable shadow intensity (flat/raised/floating/elevated)
 - Optional timestamp display
 - Collapsible controls panel
 - PNG export with high-quality rendering (2x scale)

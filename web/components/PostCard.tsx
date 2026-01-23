@@ -2,7 +2,9 @@
 
 import { PostData, CardSettings, ShadowIntensity } from '@/types/post'
 import { getThemeStyles } from '@/lib/themes'
+import { formatTimestamp } from '@/lib/utils'
 import Image from 'next/image'
+import { ANIMATION_STANDARD, ANIMATION_DELIBERATE, EASING_STANDARD } from '@/constants/ui'
 
 interface PostCardProps {
   post: PostData
@@ -12,12 +14,12 @@ interface PostCardProps {
 export default function PostCard({ post, settings }: PostCardProps) {
   const theme = getThemeStyles(settings.theme)
 
-  // Map shadow intensity to Tailwind classes (type-safe)
+  // Map shadow intensity to Tailwind classes - type-safe mapping
   const shadowClasses: Record<ShadowIntensity, string> = {
     flat: '',
-    raised: 'shadow-card-light',
-    floating: 'shadow-card-medium',
-    elevated: 'shadow-card-strong',
+    raised: 'shadow-card-raised',
+    floating: 'shadow-card-floating',
+    elevated: 'shadow-card-elevated',
   }
 
   // Map border radius to Tailwind classes
@@ -29,18 +31,6 @@ export default function PostCard({ post, settings }: PostCardProps) {
     '24': 'rounded-card-24',
   }
 
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp)
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    }).format(date)
-  }
-
   // Use customBorderRadius if available, otherwise fall back to preset
   const borderRadius = settings.customBorderRadius !== undefined 
     ? `${settings.customBorderRadius}px`
@@ -49,13 +39,14 @@ export default function PostCard({ post, settings }: PostCardProps) {
   return (
     <div
       id="card-preview"
-      className={`p-6 ${borderRadius ? '' : radiusClasses[settings.borderRadius]} ${shadowClasses[settings.shadowIntensity]} transition-all`}
+      className={`p-6 ${borderRadius ? '' : radiusClasses[settings.borderRadius]} ${shadowClasses[settings.shadowIntensity]}`}
       style={{
         backgroundColor: theme.bg,
         borderWidth: '1px',
         borderStyle: 'solid',
         borderColor: theme.border,
         borderRadius: borderRadius,
+        transition: `height ${ANIMATION_DELIBERATE}ms ${EASING_STANDARD}, box-shadow ${ANIMATION_DELIBERATE}ms ${EASING_STANDARD}, border-color ${ANIMATION_STANDARD}ms ${EASING_STANDARD}, background-color ${ANIMATION_STANDARD}ms ${EASING_STANDARD}`,
       }}
     >
       {/* Author Section */}
@@ -80,7 +71,8 @@ export default function PostCard({ post, settings }: PostCardProps) {
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1">
+          <div className="flex flex-col" style={{ rowGap: 2 }}>
+            <div className="flex items-center gap-0.5">
             <span
               className="font-bold text-base truncate"
               style={{ color: theme.textPrimary }}
@@ -91,18 +83,19 @@ export default function PostCard({ post, settings }: PostCardProps) {
               <svg
                 className="w-4 h-4 flex-shrink-0"
                 viewBox="0 0 24 24"
-                fill="#1D9BF0"
+                fill={theme.accent}
               >
                 <path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z" />
               </svg>
             )}
+            </div>
+            <span
+              className="text-sm"
+              style={{ color: theme.textSecondary }}
+            >
+              {post.author.handle}
+            </span>
           </div>
-          <span
-            className="text-sm"
-            style={{ color: theme.textSecondary }}
-          >
-            {post.author.handle}
-          </span>
         </div>
       </div>
 
@@ -126,9 +119,7 @@ export default function PostCard({ post, settings }: PostCardProps) {
                 className="relative w-full overflow-hidden rounded-2xl"
                 style={{
                   aspectRatio: post.content.images.length === 1 ? '16/9' : '1',
-                  borderWidth: '1px',
-                  borderStyle: 'solid',
-                  borderColor: theme.border,
+                  boxShadow: `inset 0 0 0 1px ${theme.imageInnerStroke}`,
                 }}
               >
                 <Image
@@ -145,16 +136,23 @@ export default function PostCard({ post, settings }: PostCardProps) {
       )}
 
       {/* Timestamp Section */}
-      {settings.showDate && (
-        <div className="pt-3" style={{ borderTop: `1px solid ${theme.border}` }}>
-          <span
-            className="text-sm"
-            style={{ color: theme.textTertiary }}
-          >
-            {formatTimestamp(post.timestamp)}
-          </span>
-        </div>
-      )}
+      <div 
+        className="overflow-hidden"
+        style={{
+          maxHeight: settings.showDate ? '100px' : '0px',
+          transition: `max-height ${ANIMATION_DELIBERATE}ms ${EASING_STANDARD}, opacity ${ANIMATION_STANDARD}ms ${EASING_STANDARD}, padding-top ${ANIMATION_DELIBERATE}ms ${EASING_STANDARD}`,
+          opacity: settings.showDate ? 1 : 0,
+          paddingTop: settings.showDate ? '12px' : '0px',
+          borderTop: settings.showDate ? `1px solid ${theme.border}` : '1px solid transparent',
+        }}
+      >
+        <span
+          className="text-sm block"
+          style={{ color: theme.textTertiary }}
+        >
+          {formatTimestamp(post.timestamp)}
+        </span>
+      </div>
     </div>
   )
 }

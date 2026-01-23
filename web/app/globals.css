@@ -8,11 +8,11 @@
   --radius-card-20: 20px;
   --radius-card-24: 24px;
 
-  /* Custom shadow values for cards */
-  --shadow-card-none: none;
-  --shadow-card-light: 0 2px 8px rgba(0, 0, 0, 0.08);
-  --shadow-card-medium: 0 4px 16px rgba(0, 0, 0, 0.12);
-  --shadow-card-strong: 0 8px 32px rgba(0, 0, 0, 0.16);
+  /* Custom shadow values for cards - Progressive elevation hierarchy */
+  --shadow-card-flat: none;
+  --shadow-card-raised: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-card-floating: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-card-elevated: 0 8px 32px rgba(0, 0, 0, 0.16);
 }
 
 :root {
@@ -37,9 +37,30 @@ body {
   to { transform: scale(1); opacity: 1; }
 }
 
+/* Toolbar button press bounce */
+@keyframes toolbar-bounce-a {
+  0% { transform: scale(1); }
+  22% { transform: scale(0.96); }
+  55% { transform: scale(1.04); }
+  78% { transform: scale(0.995); }
+  100% { transform: scale(1); }
+}
+
+/* Identical keyframes, separate name so the animation can retrigger reliably */
+@keyframes toolbar-bounce-b {
+  0% { transform: scale(1); }
+  22% { transform: scale(0.96); }
+  55% { transform: scale(1.04); }
+  78% { transform: scale(0.995); }
+  100% { transform: scale(1); }
+}
+
 .animate-in {
-  animation-duration: 0.2s;
-  animation-fill-mode: forwards;
+  animation-duration: 300ms;
+  animation-fill-mode: both;
+  animation-timing-function: ease-out;
+  opacity: 0;
+  will-change: opacity, transform;
 }
 
 .fade-in {
@@ -50,6 +71,7 @@ body {
   animation-name: zoom-in;
 }
 
+/* Slide in from bottom animations */
 @keyframes slide-in-from-bottom {
   from { transform: translateY(10px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
@@ -57,6 +79,35 @@ body {
 
 .slide-in-from-bottom-2 {
   animation-name: slide-in-from-bottom;
+}
+
+@keyframes slide-in-from-bottom-6 {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.slide-in-from-bottom-6 {
+  animation-name: slide-in-from-bottom-6;
+}
+
+/* Slide in from top animations */
+@keyframes slide-in-from-top-4 {
+  from { transform: translateY(-16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.slide-in-from-top-4 {
+  animation-name: slide-in-from-top-4;
+}
+
+/* Slide in from right animations */
+@keyframes slide-in-from-right-1 {
+  from { transform: translateX(4px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.slide-in-from-right-1 {
+  animation-name: slide-in-from-right-1;
 }
 
 .delay-150 {

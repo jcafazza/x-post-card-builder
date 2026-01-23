@@ -1,220 +1,431 @@
 'use client'
 
-import { CardSettings, Theme, ShadowIntensity, ThemeStyles } from '@/types/post'
+import { CardSettings, Theme, ShadowIntensity, ThemeStyles, THEMES, SHADOW_INTENSITIES } from '@/types/post'
 import { exportElementToPNG } from '@/lib/export'
 import { useState, useRef, useEffect } from 'react'
-import { 
-  Sun, 
-  SunMoon, 
-  Moon, 
-  Layers2, 
-  RotateCcw, 
-  Calendar, 
-  Download, 
-  Loader2 
+import { Menu as BloomMenu } from 'bloom-menu'
+import {
+  Sun,
+  SunMoon,
+  Moon,
+  Code,
+  Layers2,
+  RotateCcw,
+  Calendar,
+  Download,
+  Link,
+  Share,
+  Loader2,
+  Check
 } from 'lucide-react'
-import { TOOLTIP_DISPLAY_DURATION } from '@/constants/tooltip'
+import {
+  ANIMATION_MICRO,
+  ANIMATION_DELIBERATE,
+  EASING_BOUNCE,
+  EASING_STANDARD,
+  ERROR_MESSAGE_DISPLAY_DURATION
+} from '@/constants/ui'
 
 interface ToolbarProps {
   settings: CardSettings
   onSettingsChange: (settings: CardSettings) => void
   currentTheme: ThemeStyles
   onReset: () => void
-  onTooltipChange: (tooltip: string | null) => void
   cardWidth: number
+  sourceUrl: string | null
 }
 
-export default function Toolbar({ settings, onSettingsChange, currentTheme, onReset, onTooltipChange, cardWidth }: ToolbarProps) {
+/**
+ * Main Toolbar component providing customization controls and sharing actions.
+ * Groups controls into Theme/Shadow/Date (left) and Reset/Share (right).
+ */
+export default function Toolbar({ settings, onSettingsChange, currentTheme, onReset, cardWidth, sourceUrl }: ToolbarProps) {
   const [isExporting, setIsExporting] = useState(false)
-  const [clickedButton, setClickedButton] = useState<string | null>(null)
+  const [isShareMenuOpen, setIsShareMenuOpen] = useState(false)
+  const [isCopied, setIsCopied] = useState(false)
+  const [isExported, setIsExported] = useState(false)
+  const [pressedButton, setPressedButton] = useState<{ id: string; token: number } | null>(null)
   const [exportError, setExportError] = useState<string | null>(null)
-  const tooltipTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const [hoveredButton, setHoveredButton] = useState<string | null>(null)
+  const [focusedButton, setFocusedButton] = useState<string | null>(null)
+  const [resetRotation, setResetRotation] = useState(0)
+  
+  // Track all timers for proper cleanup
+  const buttonAnimationTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const pressTokenRef = useRef(0)
+  const errorTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const copyTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const exportTimerRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Cleanup timers on unmount
+  const shareTriggerRef = useRef<HTMLButtonElement | null>(null)
+
+  // Cleanup all timers on unmount
   useEffect(() => {
     return () => {
-      if (tooltipTimerRef.current) {
-        clearTimeout(tooltipTimerRef.current)
-        tooltipTimerRef.current = null
-      }
+      if (buttonAnimationTimerRef.current) clearTimeout(buttonAnimationTimerRef.current)
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current)
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
+      if (exportTimerRef.current) clearTimeout(exportTimerRef.current)
     }
   }, [])
 
-  const handleExport = async () => {
+  /**
+   * Unified button press animation handler.
+   * Uses a token-based system to allow reliable re-triggering of CSS animations.
+   */
+  const animateButtonPress = (buttonId: string) => {
+    const token = (pressTokenRef.current = pressTokenRef.current + 1)
+    setPressedButton({ id: buttonId, token })
+    if (buttonAnimationTimerRef.current) {
+      clearTimeout(buttonAnimationTimerRef.current)
+    }
+    buttonAnimationTimerRef.current = setTimeout(() => {
+      setPressedButton(null)
+      buttonAnimationTimerRef.current = null
+    }, ANIMATION_MICRO)
+  }
+
+  /**
+   * Universal clipboard copy helper with fallback for non-secure contexts.
+   */
+  async function copyTextToClipboard(text: string): Promise<void> {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return
+    }
+
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.style.position = 'fixed'
+    textarea.style.left = '-9999px'
+    textarea.style.top = '0'
+    document.body.appendChild(textarea)
+    textarea.focus()
+    textarea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textarea)
+  }
+
+  /**
+   * Handles the PNG export process with error handling and success state.
+   */
+  const handleExportAsPNG = async () => {
     setIsExporting(true)
     setExportError(null)
-    setClickedButton('export')
-    setTimeout(() => setClickedButton(null), 200)
+
+    if (errorTimerRef.current) {
+      clearTimeout(errorTimerRef.current)
+      errorTimerRef.current = null
+    }
+
+    animateButtonPress('share')
+
     try {
       await exportElementToPNG('card-preview', 'x-post-card.png')
+      
+      // Inline success feedback in the menu
+      setIsExported(true)
+      if (exportTimerRef.current) clearTimeout(exportTimerRef.current)
+      exportTimerRef.current = setTimeout(() => {
+        setIsExported(false)
+        exportTimerRef.current = null
+      }, 2000)
     } catch (error) {
       console.error('Export failed:', error)
       const message = error instanceof Error ? error.message : 'Failed to export PNG'
       setExportError(message)
-      // Auto-hide error after 5 seconds
-      setTimeout(() => setExportError(null), 5000)
+
+      errorTimerRef.current = setTimeout(() => {
+        setExportError(null)
+        errorTimerRef.current = null
+      }, ERROR_MESSAGE_DISPLAY_DURATION)
     } finally {
       setIsExporting(false)
     }
   }
 
-  const showTooltip = (text: string) => {
-    // Clear any existing tooltip timer
-    if (tooltipTimerRef.current) {
-      clearTimeout(tooltipTimerRef.current)
-      tooltipTimerRef.current = null
-    }
-    
-    // Show new tooltip
-    onTooltipChange(text)
-    
-    // Auto-hide after display duration
-    tooltipTimerRef.current = setTimeout(() => {
-      onTooltipChange(null)
-      tooltipTimerRef.current = null
-    }, TOOLTIP_DISPLAY_DURATION)
-  }
-
   const cycleTheme = () => {
-    setClickedButton('theme')
-    setTimeout(() => setClickedButton(null), 200)
-    const themes: Theme[] = ['light', 'dim', 'dark']
-    const currentIndex = themes.indexOf(settings.theme)
-    const nextIndex = (currentIndex + 1) % themes.length
-    const newTheme = themes[nextIndex]
-    onSettingsChange({ ...settings, theme: newTheme })
-    showTooltip(`theme: ${newTheme}`)
+    animateButtonPress('theme')
+    const currentIndex = THEMES.indexOf(settings.theme)
+    const nextIndex = (currentIndex + 1) % THEMES.length
+    onSettingsChange({ ...settings, theme: THEMES[nextIndex] })
   }
 
   const cycleShadow = () => {
-    setClickedButton('shadow')
-    setTimeout(() => setClickedButton(null), 200)
-    const intensities: ShadowIntensity[] = ['flat', 'raised', 'floating', 'elevated']
-    const currentIndex = intensities.indexOf(settings.shadowIntensity)
-    const nextIndex = (currentIndex + 1) % intensities.length
-    const newIntensity = intensities[nextIndex]
-    onSettingsChange({ ...settings, shadowIntensity: newIntensity })
-    showTooltip(`shadow: ${newIntensity}`)
+    animateButtonPress('shadow')
+    const currentIndex = SHADOW_INTENSITIES.indexOf(settings.shadowIntensity)
+    const nextIndex = (currentIndex + 1) % SHADOW_INTENSITIES.length
+    onSettingsChange({ ...settings, shadowIntensity: SHADOW_INTENSITIES[nextIndex] })
   }
 
   const handleReset = () => {
-    setClickedButton('reset')
-    setTimeout(() => setClickedButton(null), 200)
+    animateButtonPress('reset')
+    setResetRotation(prev => prev - 360)
     onReset()
   }
 
   const handleDateToggle = () => {
-    setClickedButton('date')
-    setTimeout(() => setClickedButton(null), 200)
-    const newShowDate = !settings.showDate
-    onSettingsChange({ ...settings, showDate: newShowDate })
-    showTooltip(`date: ${newShowDate ? 'on' : 'off'}`)
+    animateButtonPress('date')
+    onSettingsChange({ ...settings, showDate: !settings.showDate })
+  }
+
+  const shadowOpacityMap: Record<ShadowIntensity, number> = {
+    flat: 0.5,
+    raised: 0.7,
+    floating: 0.85,
+    elevated: 1,
   }
 
   const iconClasses = "w-5 h-5"
-  const buttonBase = "w-10 h-10 rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center border active:scale-95"
-  
-  const getButtonStyle = (isActive = false) => ({
-    backgroundColor: isActive 
-      ? (settings.theme === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.1)')
-      : currentTheme.toolbarBg,
-    borderColor: currentTheme.headerBorder,
-    color: isActive ? currentTheme.textPrimary : currentTheme.textSecondary,
-    transform: clickedButton ? 'scale(0.95)' : 'scale(1)',
-    boxShadow: `0 2px 8px rgba(0, 0, 0, ${settings.theme === 'light' ? '0.04' : '0.2'})`,
+  const buttonBase = "w-11 h-11 rounded-full cursor-pointer flex items-center justify-center border outline-none"
+
+  const getShareButtonStyle = (isHovered = false, isFocused = false) => ({
+    backgroundColor: 'transparent',
+    border: 'none',
+    color: currentTheme.textSecondary,
   })
+
+  const menuItemBg = settings.theme === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.1)'
+  const menuText = settings.theme === 'light' ? 'text-neutral-900' : 'text-neutral-50'
+  const menuHoverBg = settings.theme === 'light' ? 'hover:bg-black/5' : 'hover:bg-white/10'
+
+  /**
+   * Generates dynamic styles for toolbar buttons based on their current state.
+   */
+  const getButtonStyle = (buttonId: string, isActive = false, isHovered = false, isFocused = false) => {
+    const isPressed = pressedButton?.id === buttonId
+    const bounceName =
+      isPressed
+        ? (pressedButton!.token % 2 === 0 ? 'toolbar-bounce-a' : 'toolbar-bounce-b')
+        : undefined
+
+    return {
+      backgroundColor: isActive ? menuItemBg : currentTheme.toolbarBg,
+      borderColor: isHovered ? currentTheme.buttonBorderHover : currentTheme.buttonBorderDefault,
+      color: isActive ? currentTheme.textPrimary : currentTheme.textSecondary,
+      boxShadow: currentTheme.shadowMedium,
+      transition: `border-color ${ANIMATION_MICRO}ms ${EASING_STANDARD}, box-shadow ${ANIMATION_MICRO}ms ${EASING_STANDARD}`,
+      animationName: bounceName,
+      animationDuration: bounceName ? `${ANIMATION_MICRO}ms` : undefined,
+      animationTimingFunction: bounceName ? EASING_BOUNCE : undefined,
+      animationFillMode: bounceName ? 'both' : undefined,
+      willChange: bounceName ? 'transform' : undefined,
+    }
+  }
+
+  /**
+   * Constructs the shareable URL with all current settings as query parameters.
+   */
+  const buildShareUrl = () => {
+    if (!sourceUrl) return null
+    const shareUrl = new URL('/share', window.location.origin)
+    shareUrl.searchParams.set('url', sourceUrl)
+    shareUrl.searchParams.set('theme', settings.theme)
+    shareUrl.searchParams.set('shadow', settings.shadowIntensity)
+    shareUrl.searchParams.set('showDate', settings.showDate ? '1' : '0')
+    shareUrl.searchParams.set('cardWidth', String(settings.cardWidth))
+    if (settings.customBorderRadius !== undefined) {
+      shareUrl.searchParams.set('radius', String(settings.customBorderRadius))
+    } else {
+      shareUrl.searchParams.set('radius', String(settings.borderRadius))
+    }
+    return shareUrl.toString()
+  }
 
   return (
     <div 
-      className="relative flex items-center justify-between" 
-      style={{ 
-        width: `${cardWidth}px`,
-        maxWidth: '100%',
-      }}
+      className="relative z-[60] flex items-center justify-between"
+      style={{ width: `${cardWidth}px` }}
     >
-      {/* Export Error Message */}
-      {exportError && (
-        <div
-          className="absolute -top-14 left-1/2 -translate-x-1/2 px-3 py-2 rounded-lg border text-xs font-medium whitespace-nowrap animate-in fade-in slide-in-from-bottom-2 duration-200"
-          style={{
-            backgroundColor: currentTheme.bg,
-            borderColor: '#EF4444',
-            color: '#EF4444',
-            boxShadow: `0 4px 12px rgba(239, 68, 68, 0.2)`,
-          }}
-        >
-          {exportError}
-        </div>
-      )}
-
-      {/* Left Group: Theme, Shadow, Date */}
-      <div className="flex items-center gap-3">
-        {/* Theme Cycle Button */}
-        <button
-          onClick={cycleTheme}
-          className={`${buttonBase} ${clickedButton === 'theme' ? 'scale-90' : ''}`}
-          style={getButtonStyle(true)}
-          aria-label="Cycle Theme"
-        >
-          {settings.theme === 'light' && <Sun className={iconClasses} strokeWidth={1.5} />}
-          {settings.theme === 'dim' && <SunMoon className={iconClasses} strokeWidth={1.5} />}
-          {settings.theme === 'dark' && <Moon className={iconClasses} strokeWidth={1.5} />}
-        </button>
-
-        {/* Shadow Cycle Button */}
-        <button
-          onClick={cycleShadow}
-          className={`${buttonBase} ${clickedButton === 'shadow' ? 'scale-90' : ''}`}
-          style={getButtonStyle(true)}
-          aria-label="Cycle Shadow"
-        >
-          <Layers2
-            className={iconClasses}
-            strokeWidth={1.5}
+        {/* Export Error Overlay */}
+        {exportError && (
+          <div
+            className="absolute -top-14 left-1/2 -translate-x-1/2 px-3 py-2 rounded-lg border text-xs font-medium whitespace-nowrap animate-in fade-in slide-in-from-bottom-2"
             style={{
-              opacity: settings.shadowIntensity === 'flat' ? 0.5 : settings.shadowIntensity === 'raised' ? 0.75 : 1
+              animationDuration: `${ANIMATION_MICRO}ms`,
+              backgroundColor: currentTheme.errorBg,
+              borderColor: currentTheme.error,
+              color: currentTheme.error,
+              boxShadow: currentTheme.errorShadow,
             }}
-          />
-        </button>
+          >
+            {exportError}
+          </div>
+        )}
 
-        {/* Display Date Toggle */}
-        <button
-          onClick={handleDateToggle}
-          className={`${buttonBase} ${clickedButton === 'date' ? 'scale-90' : ''}`}
-          style={getButtonStyle(settings.showDate)}
-          aria-label="Toggle Date"
-        >
-          <Calendar className={iconClasses} strokeWidth={1.5} />
-        </button>
+        {/* Customization Group */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={cycleTheme}
+            onMouseEnter={() => setHoveredButton('theme')}
+            onMouseLeave={() => setHoveredButton(null)}
+            onFocus={() => setFocusedButton('theme')}
+            onBlur={() => setFocusedButton(null)}
+            className={buttonBase}
+            style={getButtonStyle('theme', true, hoveredButton === 'theme', focusedButton === 'theme')}
+            aria-label="Cycle Theme"
+          >
+            {settings.theme === 'light' && <Sun className={iconClasses} strokeWidth={1.5} />}
+            {settings.theme === 'dim' && <SunMoon className={iconClasses} strokeWidth={1.5} />}
+            {settings.theme === 'dark' && <Moon className={iconClasses} strokeWidth={1.5} />}
+          </button>
+
+          <button
+            type="button"
+            onClick={cycleShadow}
+            onMouseEnter={() => setHoveredButton('shadow')}
+            onMouseLeave={() => setHoveredButton(null)}
+            onFocus={() => setFocusedButton('shadow')}
+            onBlur={() => setFocusedButton(null)}
+            className={buttonBase}
+            style={getButtonStyle('shadow', true, hoveredButton === 'shadow', focusedButton === 'shadow')}
+            aria-label="Cycle Shadow"
+          >
+            <Layers2
+              className={iconClasses}
+              strokeWidth={1.5}
+              style={{ opacity: shadowOpacityMap[settings.shadowIntensity] }}
+            />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleDateToggle}
+            onMouseEnter={() => setHoveredButton('date')}
+            onMouseLeave={() => setHoveredButton(null)}
+            onFocus={() => setFocusedButton('date')}
+            onBlur={() => setFocusedButton(null)}
+            className={buttonBase}
+            style={getButtonStyle('date', settings.showDate, hoveredButton === 'date', focusedButton === 'date')}
+            aria-label="Toggle Date"
+          >
+            <Calendar className={iconClasses} strokeWidth={1.5} />
+          </button>
+        </div>
+
+        {/* Action Group */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleReset}
+            onMouseEnter={() => setHoveredButton('reset')}
+            onMouseLeave={() => setHoveredButton(null)}
+            onFocus={() => setFocusedButton('reset')}
+            onBlur={() => setFocusedButton(null)}
+            className={buttonBase}
+            style={getButtonStyle('reset', false, hoveredButton === 'reset', focusedButton === 'reset')}
+            aria-label="Reset to Default"
+          >
+            <RotateCcw
+              className={iconClasses}
+              strokeWidth={1.5}
+              style={{
+                transform: `rotate(${resetRotation}deg)`,
+                transition: `transform ${ANIMATION_DELIBERATE}ms ${EASING_STANDARD}`,
+              }}
+            />
+          </button>
+
+          <BloomMenu.Root
+            direction="bottom"
+            anchor="end"
+            open={isShareMenuOpen}
+            onOpenChange={setIsShareMenuOpen}
+          >
+            <BloomMenu.Container
+              buttonSize={44}
+              menuWidth={240}
+              menuRadius={16}
+              style={{
+                backgroundColor: isShareMenuOpen ? currentTheme.bg : currentTheme.toolbarBg,
+                border: `1px solid ${
+                  isShareMenuOpen 
+                    ? currentTheme.border 
+                    : (hoveredButton === 'share' ? currentTheme.buttonBorderHover : currentTheme.buttonBorderDefault)
+                }`,
+                boxShadow: isShareMenuOpen ? currentTheme.shadowDeep : currentTheme.shadowMedium,
+                overflow: 'hidden',
+                zIndex: 1001,
+              }}
+            >
+              <BloomMenu.Trigger>
+                  <button
+                    type="button"
+                    ref={shareTriggerRef}
+                    onMouseEnter={() => setHoveredButton('share')}
+                    onMouseLeave={() => setHoveredButton(null)}
+                    onFocus={() => setFocusedButton('share')}
+                    onBlur={() => setFocusedButton(null)}
+                    className={buttonBase}
+                    style={{
+                      ...getShareButtonStyle(hoveredButton === 'share', focusedButton === 'share'),
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      boxShadow: 'none',
+                    }}
+                    aria-label="Share"
+                  >
+                  <Share className={iconClasses} strokeWidth={1.5} />
+                </button>
+              </BloomMenu.Trigger>
+
+              <BloomMenu.Content className="p-2">
+                <BloomMenu.Item
+                  disabled={isExporting}
+                  onSelect={handleExportAsPNG}
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${menuText} ${menuHoverBg} disabled:opacity-50`}
+                >
+                  {isExporting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.8} />
+                  ) : isExported ? (
+                    <Check className="w-4 h-4" strokeWidth={1.8} />
+                  ) : (
+                    <Download className="w-4 h-4" strokeWidth={1.8} />
+                  )}
+                  <span className="flex-1">{isExported ? 'Exported!' : 'Export as PNG'}</span>
+                </BloomMenu.Item>
+
+                <BloomMenu.Item
+                  disabled={!sourceUrl}
+                  onSelect={async () => {
+                    const urlToCopy = buildShareUrl()
+                    if (!urlToCopy) return
+                    await copyTextToClipboard(urlToCopy)
+                    
+                    // Visual feedback in the menu
+                    setIsCopied(true)
+                    if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
+                    copyTimerRef.current = setTimeout(() => {
+                      setIsCopied(false)
+                      copyTimerRef.current = null
+                    }, 2000)
+                  }}
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${menuText} ${menuHoverBg} disabled:opacity-50`}
+                >
+                  {isCopied ? (
+                    <Check className="w-4 h-4" strokeWidth={1.8} />
+                  ) : (
+                    <Link className="w-4 h-4" strokeWidth={1.8} />
+                  )}
+                  <span className="flex-1">{isCopied ? 'Copied!' : 'Share link'}</span>
+                </BloomMenu.Item>
+
+                <div className="h-px my-1 mx-1" style={{ backgroundColor: currentTheme.border, opacity: 0.6 }} />
+
+                <BloomMenu.Item
+                  disabled
+                  onSelect={() => {}}
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${menuText} ${menuHoverBg} opacity-50`}
+                >
+                  <Code className="w-4 h-4" strokeWidth={1.8} />
+                  <span className="flex-1">Copy snippet</span>
+                  <span className="text-[11px] font-semibold opacity-60">Soon</span>
+                </BloomMenu.Item>
+              </BloomMenu.Content>
+            </BloomMenu.Container>
+          </BloomMenu.Root>
+        </div>
       </div>
-
-      {/* Right Group: Reset, Export */}
-      <div className="flex items-center gap-3">
-        {/* Reset Button */}
-        <button
-          onClick={handleReset}
-          className={`${buttonBase} ${clickedButton === 'reset' ? 'scale-90' : ''}`}
-          style={getButtonStyle()}
-          aria-label="Reset to Default"
-        >
-          <RotateCcw className={iconClasses} strokeWidth={1.5} />
-        </button>
-
-        {/* Export Button */}
-        <button
-          onClick={handleExport}
-          disabled={isExporting}
-          className={`${buttonBase} ${clickedButton === 'export' ? 'scale-90' : ''}`}
-          style={getButtonStyle()}
-          aria-label="Download PNG"
-        >
-          {isExporting ? (
-            <Loader2 className={`${iconClasses} animate-spin`} strokeWidth={1.5} />
-          ) : (
-            <Download className={iconClasses} strokeWidth={1.5} />
-          )}
-        </button>
-      </div>
-    </div>
   )
 }

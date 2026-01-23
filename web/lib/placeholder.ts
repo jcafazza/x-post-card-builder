@@ -1,6 +1,9 @@
 import { PostData } from '@/types/post'
 
-// Default placeholder post - Brad Radius
+/**
+ * Default placeholder post - Brad Radius
+ * Used when no post has been imported yet.
+ */
 const defaultPlaceholder: PostData = {
   author: {
     name: 'Brad Radius',
@@ -15,11 +18,9 @@ const defaultPlaceholder: PostData = {
   timestamp: '2026-01-22T23:37:00Z',
 }
 
-export function getRandomPlaceholder(): PostData {
-  return defaultPlaceholder
-}
-
-// Export the default for direct access
+/**
+ * Returns the default placeholder post data.
+ */
 export function getDefaultPlaceholder(): PostData {
   return defaultPlaceholder
 }

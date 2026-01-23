@@ -1,30 +1,37 @@
 import { PostData, CardSettings, ShadowIntensity } from '@/types/post'
 import { getThemeStyles } from './themes'
+import { formatTimestamp } from './utils'
 
 /**
- * Shadow intensity to CSS box-shadow mapping
+ * ─────────────────────────────────────────────────────────────────────────────
+ * SHADOW CONFIGURATION
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+/**
+ * Shadow intensity to CSS box-shadow mapping.
+ * 
+ * Matches the visual hierarchy defined in globals.css:
+ * - flat: No shadow (ground level)
+ * - raised: Subtle elevation (2px blur, 8px spread)
+ * - floating: Medium elevation (4px blur, 16px spread)
+ * - elevated: High elevation (8px blur, 32px spread)
+ * 
+ * These values must match --shadow-card-* CSS variables exactly
+ * to ensure generated code matches the visual preview.
  */
 const shadowMap: Record<ShadowIntensity, string> = {
   flat: 'none',
-  raised: '0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.06)',
-  floating: '0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06)',
-  elevated: '0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05)',
+  raised: '0 2px 8px rgba(0, 0, 0, 0.08)',
+  floating: '0 4px 16px rgba(0, 0, 0, 0.12)',
+  elevated: '0 8px 32px rgba(0, 0, 0, 0.16)',
 }
 
 /**
- * Format timestamp for display
+ * ─────────────────────────────────────────────────────────────────────────────
+ * UTILITIES
+ * ─────────────────────────────────────────────────────────────────────────────
  */
-function formatTimestamp(timestamp: string): string {
-  const date = new Date(timestamp)
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  }).format(date)
-}
 
 /**
  * Escape HTML entities
@@ -61,6 +68,12 @@ function generateCardStyles(settings: CardSettings): Record<string, string> {
     transition: 'all 0.3s ease',
   }
 }
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * REACT COMPONENT GENERATION
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 
 /**
  * Generate React/JSX code
@@ -229,6 +242,12 @@ ${stylesString}
 }
 
 /**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * HTML/CSS GENERATION
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+/**
  * Generate HTML code
  */
 export function generateHTMLCode(post: PostData, settings: CardSettings): string {
@@ -315,6 +334,12 @@ export function generateHTMLCode(post: PostData, settings: CardSettings): string
 </body>
 </html>`
 }
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * VUE COMPONENT GENERATION
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 
 /**
  * Generate Vue code
@@ -502,6 +527,12 @@ export default {
 }
 </script>`
 }
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * VANILLA JS GENERATION
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 
 /**
  * Generate Vanilla JavaScript code

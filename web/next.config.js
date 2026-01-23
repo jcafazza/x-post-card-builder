@@ -14,4 +14,11 @@ const nextConfig = {
   },
 }
 
+// For development server
+if (process.env.NODE_ENV === 'development') {
+  nextConfig.experimental = {
+    ...nextConfig.experimental,
+  }
+}
+
 module.exports = nextConfig
