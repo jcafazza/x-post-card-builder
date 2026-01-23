@@ -18,6 +18,9 @@ export function formatTimestamp(timestamp: string): string {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
+    // Fix hydration mismatches: server and browser may be in different timezones.
+    // Using a fixed timezone makes the rendered string deterministic.
+    timeZone: 'UTC',
   }).format(date)
 }
 
