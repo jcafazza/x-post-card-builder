@@ -39,7 +39,7 @@ export default function PostCard({ post, settings }: PostCardProps) {
   return (
     <div
       id="card-preview"
-      className={`p-6 ${borderRadius ? '' : radiusClasses[settings.borderRadius]} ${shadowClasses[settings.shadowIntensity]}`}
+      className={`p-6 select-none cursor-default ${borderRadius ? '' : radiusClasses[settings.borderRadius]} ${shadowClasses[settings.shadowIntensity]}`}
       style={{
         backgroundColor: theme.bg,
         borderWidth: '1px',
@@ -59,6 +59,7 @@ export default function PostCard({ post, settings }: PostCardProps) {
               fill
               className="object-cover"
               unoptimized
+              draggable={false}
             />
           ) : (
             <div
@@ -128,6 +129,7 @@ export default function PostCard({ post, settings }: PostCardProps) {
                   fill
                   className="object-cover"
                   unoptimized
+                  draggable={false}
                 />
               </div>
             ))}

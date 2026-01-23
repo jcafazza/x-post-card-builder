@@ -11,6 +11,7 @@ import { ANIMATION_DELIBERATE, EASING_ELEGANT, EASING_STANDARD } from '@/constan
 import {
   CARD_DEFAULT_RADIUS,
   CARD_DEFAULT_WIDTH,
+  CARD_MAX_RADIUS,
   CARD_MAX_WIDTH,
   CARD_MIN_WIDTH,
 } from '@/constants/card'
@@ -44,7 +45,7 @@ export default function InteractiveSharePage() {
 
     const rawRadius = Number(radiusParam ?? CARD_DEFAULT_RADIUS)
     const customBorderRadius = Number.isFinite(rawRadius)
-      ? Math.max(0, Math.min(60, rawRadius))
+      ? Math.max(0, Math.min(CARD_MAX_RADIUS, rawRadius))
       : CARD_DEFAULT_RADIUS
 
     return {
@@ -65,6 +66,21 @@ export default function InteractiveSharePage() {
   }, [initialSettings])
 
   const theme = getThemeStyles(settings.theme)
+
+  // Keep the *page* background in sync with the chosen theme (not just the card).
+  useEffect(() => {
+    const root = document.documentElement
+
+    root.style.setProperty('--share-bg', theme.appBg)
+    root.style.setProperty('--share-text', theme.appText)
+    root.style.setProperty('--share-muted', theme.textSecondary)
+
+    return () => {
+      root.style.removeProperty('--share-bg')
+      root.style.removeProperty('--share-text')
+      root.style.removeProperty('--share-muted')
+    }
+  }, [theme.appBg, theme.appText, theme.textSecondary])
 
   const [post, setPost] = useState<PostData | null>(null)
   const [error, setError] = useState<string | null>(null)

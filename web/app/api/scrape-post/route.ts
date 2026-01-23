@@ -89,6 +89,7 @@ const SAMPLE_POSTS: Record<string, {
 
 type SyndicationTweet = {
   text?: string
+  full_text?: string
   created_at?: string
   user?: {
     name?: string
@@ -96,6 +97,23 @@ type SyndicationTweet = {
     profile_image_url_https?: string
     verified?: boolean
     is_blue_verified?: boolean
+  }
+  // Long posts ("Show more") are often represented as a note tweet with a separate text field.
+  // The exact shape can vary, so we keep this flexible.
+  note_tweet?: {
+    text?: string
+    note_tweet_results?: {
+      result?: {
+        text?: string
+      }
+    }
+  }
+  entities?: {
+    urls?: Array<{
+      url?: string
+      expanded_url?: string
+      display_url?: string
+    }>
   }
   photos?: Array<{ url?: string }>
   video?: {
@@ -159,6 +177,102 @@ function extractMedia(data: SyndicationTweet): string[] {
     }
     return url
   })
+}
+
+function extractBestText(data: SyndicationTweet): string {
+  const anyData = data as any
+
+  const candidates: Array<unknown> = [
+    anyData?.note_tweet?.text,
+    anyData?.note_tweet?.note_tweet_results?.result?.text,
+    anyData?.full_text,
+    anyData?.text,
+  ]
+
+  const strings = candidates.filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+  if (strings.length === 0) return ''
+
+  // Prefer the longest option (note tweets are typically much longer than `text`).
+  return strings.reduce((best, cur) => (cur.length > best.length ? cur : best), strings[0])
+}
+
+/**
+ * Removes media-only shortlinks that X appends to the tweet text.
+ * Examples:
+ * - "pic.twitter.com/2keQnkX8VI"
+ * - "https://t.co/AbCdEf1234" (often the media stub)
+ *
+ * We only trim these when they appear at the end of the text (optionally repeated),
+ * so we don't accidentally remove legitimate links in the middle of a tweet.
+ */
+function stripTrailingMediaShortlinks(input: string): string {
+  let text = input ?? ''
+  if (!text) return ''
+
+  // Normalize whitespace at end to make repeated stripping reliable
+  text = text.replace(/\s+$/g, '')
+
+  const picAtEnd = /(?:\s+|^)(?:https?:\/\/)?pic\.twitter\.com\/[a-z0-9]+$/i
+  const tcoAtEnd = /(?:\s+|^)(?:https?:\/\/)?t\.co\/[a-z0-9]+$/i
+
+  // Strip repeated media stubs at the end (sometimes multiple tokens)
+  // Example: "text ... https://t.co/xxx pic.twitter.com/yyy"
+  // Do a bounded loop to avoid any chance of infinite looping.
+  for (let i = 0; i < 10; i++) {
+    const before = text
+    text = text.replace(picAtEnd, '').replace(/\s+$/g, '')
+    text = text.replace(tcoAtEnd, '').replace(/\s+$/g, '')
+    if (text === before) break
+  }
+
+  return text
+}
+
+function collectMediaShortUrls(data: SyndicationTweet): Set<string> {
+  const urls = data.entities?.urls
+  if (!Array.isArray(urls)) return new Set()
+
+  const out = new Set<string>()
+  for (const u of urls) {
+    const short = u?.url
+    const display = u?.display_url ?? ''
+    const expanded = u?.expanded_url ?? ''
+
+    // Only target media stubs, not normal outbound links.
+    const looksLikeMedia =
+      display.includes('pic.twitter.com') ||
+      expanded.includes('pic.twitter.com') ||
+      expanded.includes('twitter.com/') && expanded.includes('/photo/')
+
+    if (looksLikeMedia && typeof short === 'string' && short.length > 0) {
+      out.add(short)
+    }
+  }
+
+  return out
+}
+
+function cleanTweetText(input: string, opts: { hasImages: boolean; mediaShortUrls: Set<string> }): string {
+  let text = input ?? ''
+  if (!text) return ''
+
+  // Remove `pic.twitter.com/...` anywhere (X often adds this on its own line).
+  if (opts.hasImages) {
+    text = text.replace(/(?:https?:\/\/)?pic\.twitter\.com\/[a-z0-9]+/gi, '')
+    // Remove known media `t.co/...` stubs when we have images.
+    for (const short of opts.mediaShortUrls) {
+      text = text.split(short).join('')
+    }
+  }
+
+  // Always strip any remaining trailing stubs and normalize whitespace.
+  text = stripTrailingMediaShortlinks(text)
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim()
+
+  return text
 }
 
 async function fetchViaSyndication(tweetId: string): Promise<SyndicationTweet> {
@@ -269,10 +383,12 @@ export async function POST(request: NextRequest) {
     // 1) Try syndication JSON (best fidelity for modern posts).
     try {
       const data = await fetchViaSyndication(tweetId)
-      const text = data.text ?? ''
       
       // Use the improved media extraction
       const images = extractMedia(data)
+      const mediaShortUrls = collectMediaShortUrls(data)
+      const rawText = extractBestText(data)
+      const text = cleanTweetText(rawText, { hasImages: images.length > 0, mediaShortUrls })
 
       const name = data.user?.name || username
       const handle = data.user?.screen_name ? `@${data.user.screen_name}` : `@${username}`
@@ -298,7 +414,7 @@ export async function POST(request: NextRequest) {
     try {
       const canonicalUrl = `https://twitter.com/${username}/status/${tweetId}`
       const oembed = await fetchViaOEmbed(canonicalUrl)
-      const text = oembed.html ? extractTextFromOEmbedHtml(oembed.html) : ''
+      const text = cleanTweetText(oembed.html ? extractTextFromOEmbedHtml(oembed.html) : '', { hasImages: false, mediaShortUrls: new Set() })
       const timestamp = oembed.html ? extractDateFromOEmbedHtml(oembed.html) : null
 
       if (text) {

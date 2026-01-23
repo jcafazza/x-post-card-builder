@@ -18,7 +18,7 @@ export const CARD_DEFAULT_WIDTH = 500
 export const CARD_DEFAULT_RADIUS = 20
 
 /** Maximum allowed border radius for the card in pixels */
-export const CARD_MAX_RADIUS = 60
+export const CARD_MAX_RADIUS = 48
 
 /** The size of the interactive "hit zone" for corner resizing in pixels */
 export const CARD_CORNER_ZONE = 24

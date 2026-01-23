@@ -20,8 +20,10 @@ export default function SharePage() {
       className="min-h-screen flex items-center justify-center p-12"
       style={{
         transition: `background-color ${ANIMATION_DELIBERATE}ms ${EASING_ELEGANT}, color ${ANIMATION_DELIBERATE}ms ${EASING_ELEGANT}`,
-        backgroundColor: theme.appBg,
-        color: theme.appText,
+        // Use CSS variables so the client component can update the share page theme
+        // after reading URL params, while keeping a sensible server-rendered fallback.
+        backgroundColor: `var(--share-bg, ${theme.appBg})`,
+        color: `var(--share-text, ${theme.appText})`,
       }}
     >
       <Suspense
@@ -29,7 +31,7 @@ export default function SharePage() {
           <div
             className="flex flex-col items-center gap-4 animate-in fade-in zoom-in"
             style={{
-              color: theme.textSecondary,
+              color: `var(--share-muted, ${theme.textSecondary})`,
               transition: `color ${ANIMATION_DELIBERATE}ms ${EASING_STANDARD}`,
               animationDuration: `${ANIMATION_DELIBERATE}ms`,
             }}
