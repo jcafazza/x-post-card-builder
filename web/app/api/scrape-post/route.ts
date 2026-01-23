@@ -124,6 +124,59 @@ async function fetchViaSyndication(tweetId: string): Promise<SyndicationTweet> {
   return response.json()
 }
 
+type OEmbedResponse = {
+  author_name?: string
+  author_url?: string
+  html?: string
+}
+
+async function fetchViaOEmbed(tweetUrl: string): Promise<OEmbedResponse> {
+  const endpoint = `https://publish.twitter.com/oembed?omit_script=1&url=${encodeURIComponent(tweetUrl)}`
+  const response = await fetch(endpoint, {
+    headers: {
+      'User-Agent':
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      Accept: 'application/json',
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error(`oEmbed fetch failed (HTTP ${response.status})`)
+  }
+
+  return response.json()
+}
+
+function decodeHtmlEntities(input: string): string {
+  return input
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+}
+
+function extractTextFromOEmbedHtml(html: string): string {
+  // Typical payload:
+  // <blockquote ...><p ...>text<br>more</p>&mdash; ... <a ...>Date</a></blockquote>
+  const match = html.match(/<p[^>]*>([\s\S]*?)<\/p>/i)
+  if (!match) return ''
+
+  return decodeHtmlEntities(
+    match[1]
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .trim()
+  )
+}
+
+function extractDateFromOEmbedHtml(html: string): string | null {
+  const match = html.match(/<a [^>]*>([^<]+)<\/a>\s*<\/blockquote>\s*$/i)
+  if (!match) return null
+  const parsed = new Date(match[1])
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -156,14 +209,15 @@ export async function POST(request: NextRequest) {
 
     const [, , username, tweetId] = match
 
-    // --- Production path: fast syndication fetch (no headless browser) ---
+    // --- Production-first: use fast endpoints (avoid headless browser on Vercel) ---
+    // 1) Try syndication JSON (best fidelity for modern posts).
     try {
       const data = await fetchViaSyndication(tweetId)
       const text = data.text ?? ''
       const images = Array.isArray(data.photos)
-        ? data.photos.map((p) => p?.url).filter(Boolean) as string[]
+        ? (data.photos.map((p) => p?.url).filter(Boolean) as string[])
         : Array.isArray(data.mediaDetails)
-          ? data.mediaDetails.map((m) => m?.media_url_https).filter(Boolean) as string[]
+          ? (data.mediaDetails.map((m) => m?.media_url_https).filter(Boolean) as string[])
           : []
 
       const name = data.user?.name || username
@@ -180,14 +234,38 @@ export async function POST(request: NextRequest) {
         })
       }
     } catch (e) {
-      // If syndication fails, fall through to the (slower) Puppeteer path in local dev.
       console.warn('Syndication scrape failed:', e instanceof Error ? e.message : e)
-      if (!isLocal) {
-        return NextResponse.json(
-          { error: 'Could not load post in production. Try again or use: demo, startup, code, ai, product' },
-          { status: 503 }
-        )
+    }
+
+    // 2) Fallback: oEmbed (works even for very old posts; text-only, no images).
+    try {
+      const canonicalUrl = `https://twitter.com/${username}/status/${tweetId}`
+      const oembed = await fetchViaOEmbed(canonicalUrl)
+      const text = oembed.html ? extractTextFromOEmbedHtml(oembed.html) : ''
+      const timestamp = oembed.html ? extractDateFromOEmbedHtml(oembed.html) : null
+
+      if (text) {
+        return NextResponse.json({
+          author: {
+            name: oembed.author_name || username,
+            handle: oembed.author_name ? `@${oembed.author_name}` : `@${username}`,
+            avatar: `https://unavatar.io/twitter/${oembed.author_name || username}`,
+            verified: false,
+          },
+          content: { text, images: [] },
+          timestamp: timestamp || new Date().toISOString(),
+        })
       }
+    } catch (e) {
+      console.warn('oEmbed scrape failed:', e instanceof Error ? e.message : e)
+    }
+
+    // In production, stop here (headless browser is too unreliable/slow for Vercel serverless).
+    if (!isLocal) {
+      return NextResponse.json(
+        { error: 'Could not load post. Try: demo, startup, code, ai, or product' },
+        { status: 503 }
+      )
     }
 
     // Configure Puppeteer for production (Vercel) vs Local
