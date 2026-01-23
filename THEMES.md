@@ -1,6 +1,6 @@
 # Theme Specifications
 
-Reference for implementing the three theme options in Framer.
+Design reference for implementing the three theme options in the app.
 
 ---
 
@@ -52,31 +52,13 @@ Reference for implementing the three theme options in Framer.
 
 ---
 
-## Implementation in Framer
+## Implementation
 
-### Using Variants
-
-1. Create a frame for your card preview
-2. Add 3 variants: "light", "dim", "dark"
-3. For each variant, set the colors as specified above
-4. Bind the variant to the `theme` variable
-
-### Using Conditional Styling
-
-Alternatively, use conditional expressions in Framer:
-
-```javascript
-// Background color
-theme === "light" ? "#FFFFFF" :
-theme === "dim" ? "#15202B" : "#000000"
-
-// Primary text color
-theme === "light" ? "#0F1419" : "#FFFFFF"
-
-// Secondary text color
-theme === "light" ? "#536471" :
-theme === "dim" ? "#8B98A5" : "#71767B"
-```
+Theme tokens are implemented in `web/lib/themes.ts` and consumed by:
+- `web/components/PostCard.tsx`
+- `web/components/Toolbar.tsx`
+- `web/app/page.tsx`
+- `web/app/share/*`
 
 ---
 
@@ -94,24 +76,24 @@ Use these fixed values in the dropdown:
 
 ## Shadow Intensity Values
 
-### None
+### Flat
 ```
 box-shadow: none
 ```
 
-### Light
+### Raised
 ```
 box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12),
             0 1px 2px rgba(0, 0, 0, 0.06)
 ```
 
-### Medium
+### Floating
 ```
 box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1),
             0 2px 4px rgba(0, 0, 0, 0.06)
 ```
 
-### Strong
+### Elevated
 ```
 box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1),
             0 4px 6px rgba(0, 0, 0, 0.05)
@@ -123,7 +105,7 @@ box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1),
 
 ## Tips
 
-- **Default combination:** Light theme + 16px radius + Medium shadow
+- **Default combination:** Light theme + 16px radius + Floating shadow
 - **Test each theme** with various post content (short/long text, with/without images)
 - **Responsive:** Ensure text is readable on all themes at different screen sizes
 - **Accessibility:** All theme combinations meet WCAG AA contrast standards

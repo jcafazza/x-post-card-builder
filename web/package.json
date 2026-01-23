@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",
-    "@sparticuz/chromium-min": "^132.0.0",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.10.5",
     "@types/react": "^19.0.6",
@@ -23,7 +22,6 @@
     "next": "^15.1.6",
     "postcss": "^8.4.49",
     "prism-react-renderer": "^2.4.1",
-    "puppeteer-core": "^24.1.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwindcss": "^4.0.0",

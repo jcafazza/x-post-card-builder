@@ -44,7 +44,7 @@ Unlike existing tools that focus on screenshot generation for social sharing, th
 **Design Controls:**
 - Theme selection (dropdown): "light", "dim", "dark"
 - Card border radius (dropdown): 0px, 8px, 16px, 20px, 24px
-- Drop shadow intensity (dropdown): none, light, medium, strong
+- Drop shadow intensity (dropdown): flat, raised, floating, elevated
 
 #### Post Content Display
 - Author avatar
@@ -56,19 +56,19 @@ Unlike existing tools that focus on screenshot generation for social sharing, th
 
 #### Export Options
 
-**Option 1: PNG Export (MVP - Framer)**
+**Option 1: PNG Export (MVP)**
 - Download card as high-quality PNG image
 - Optimized for web use
-- Implemented using html-to-image library in Framer code component
+- Implemented using `html2canvas` in the web app
 - Captures the preview card frame and converts to downloadable image
 
 **Option 2: Embed Code (Phase 2 - Post-MVP)**
-- Web component implementation (separate from Framer site)
-- Copy-to-clipboard functionality added to Framer UI
+- Web component implementation (separate package / distribution)
+- Copy-to-clipboard functionality added to the app UI
 - Usage format: `<x-card url="[post-url]" theme="..." radius="..."></x-card>`
 - Lightweight JavaScript library hosted on CDN
 - Customizable via component attributes
-- Framer site provides the UI to generate and copy embed code
+- App provides the UI to generate and copy embed code
 - Web component built separately, tested, and deployed to CDN
 
 **MVP Focus:** Start with PNG export only. This keeps the 2-3 day timeline realistic and gets a working product shipped. Web component can be added as v2.
@@ -77,18 +77,14 @@ Unlike existing tools that focus on screenshot generation for social sharing, th
 
 ## Technical Architecture
 
-### Frontend (Framer)
-- Build entire UI in Framer
-- Leverage Framer's component system and reactivity
-- Use Framer's code components for custom functionality
-- Real-time preview of card as user adjusts settings
-- Responsive design handled by Framer
-- Built-in hosting via Framer
+### Frontend (Next.js)
+- Single Next.js app (App Router) for UI + share page
+- Theme/motion constants centralized for design consistency
 
-### Backend/Scraping (External API)
-- Separate serverless function (Vercel, Railway, or Netlify)
+### Backend/Scraping (Next.js API Routes)
+- Server-side routes ship with the app (Vercel Functions)
 - Endpoint: `POST /api/scrape-post`
-- Accepts X post URL in request body
+- Accepts an X post URL in the request body
 - Returns JSON with parsed post data:
   ```json
   {
@@ -104,32 +100,24 @@ Unlike existing tools that focus on screenshot generation for social sharing, th
     "timestamp": "2024-01-15T12:00:00Z"
   }
   ```
-- Parse HTML from public X post URLs using Cheerio
-- Handle CORS issues
+- Primary data source: Twitter syndication endpoints + HTML embed fallback
+- Image proxy route: `GET /api/image?url=...` for CORS-safe media + reliable export
 - Error handling for deleted/protected posts
 - Rate limiting to prevent abuse
 
-### Framer Integration
-- Use Framer's code override or code component to call scraping API
-- Store post data in Framer's state/variables
-- Bind data to Framer design elements
-- Use Framer's interactions for control panel
-
-### PNG Export (Framer)
-- Use `html-to-image` library in Framer code component
-- Capture the card preview as PNG
-- Trigger download for user
+### PNG Export (Web)
+- Use `html2canvas` client-side to capture the card preview
+- Proxy media via `/api/image` to avoid canvas tainting (CORS)
 
 ### Web Component (Phase 2 - Post-MVP)
-- Build separately from Framer site
+- Build separately from the app UI
 - Host on CDN (jsDelivr, unpkg, or custom)
 - Web component calls the same scraping API endpoint
 - Custom element: `<x-card>`
 - Props/attributes for customization
 
 ### Preset Templates
-- Design 1-2 basic presets directly in Framer
-- Use Framer variants for different preset styles
+- Ship 1-2 presets directly in the app UI
 - Users can customize from preset starting points
 
 ---
@@ -219,74 +207,44 @@ Unlike existing tools that focus on screenshot generation for social sharing, th
 
 ## Development Timeline
 
-**Target: 2-3 days**
+**Target: 2–3 days**
 
-### Day 1: Backend API + Framer Setup
-**Morning:**
-- Set up Vercel project for scraping API
-- Build `/api/scrape-post` endpoint
-- Test scraping logic with various X post URLs
-- Deploy to Vercel
+### Day 1: Core experience
+- UI shell + theme system
+- `/api/scrape-post` endpoint (syndication JSON + HTML embed fallback)
+- `/api/image` proxy for reliable media + export
+- Card rendering for text + images
 
-**Afternoon:**
-- Create new Framer project
-- Design basic card layout and preview area
-- Design control panel UI (sliders, toggles, color pickers)
-- Set up Framer variants for preset styles
+### Day 2: Polish + sharing
+- Export (PNG) via `html2canvas`
+- Share page that reads settings from URL params
+- Edge-case hardening (long posts, missing media, protected posts)
+- Deployment to Vercel
 
-### Day 2: Framer Integration + Interactivity
-**Morning:**
-- Create Framer code component to call scraping API
-- Wire up URL input to fetch post data
-- Bind API response data to card design elements
-- Handle loading and error states
-
-**Afternoon:**
-- Connect all customization controls to card preview
-- Implement real-time updates as controls change
-- Add PNG export functionality using html2canvas
-- Test across different post types (text, images, with/without timestamp)
-
-### Day 3: Polish + Testing
-**Morning:**
-- Visual polish and styling refinements
-- Responsive design adjustments
-- Error handling and edge cases
-- Copy for UI and instructions
-
-**Afternoon:**
-- Cross-browser testing
-- Mobile responsiveness check
-- Performance optimization
-- Deploy via Framer
-- (Optional) Start web component if time allows
-
-### Phase 2 (Post-MVP): Web Component
-- Build standalone web component
-- Set up separate build process
-- Host on CDN
-- Add "Copy Embed Code" feature to Framer site
-- Documentation for developers
+### Phase 2: Embeds
+- Standalone `<x-card>` web component package + CDN distribution
+- “Copy embed code” UX in the app
 
 ---
 
 ## Tech Stack
 
 ### Frontend
-- **Framer** (primary platform for design and hosting)
+- **Next.js** (App Router) + **React** + **TypeScript**
+- **Tailwind CSS**
+- **Base UI**
+- **Framer Motion** (micro-interactions)
 
-### Backend API (Scraping Endpoint)
-- **Vercel Serverless Functions**
-- **Node.js** runtime
-- **Cheerio** for HTML parsing
+### Backend (API Routes)
+- **Next.js Route Handlers** (Vercel Functions, Node.js runtime)
+- Tokenized requests to Twitter syndication endpoints + HTML fallback
+- Same-origin image proxy for CORS-safe rendering/export
 
 ### Libraries/Dependencies
-- **html-to-image** (PNG export in Framer)
-- **Axios** or **fetch** (API calls from Framer to scraping endpoint)
+- **html2canvas** (PNG export)
 
 ### Hosting
-- **Framer** (frontend/main site) - built-in
-- **Vercel** (scraping API endpoint) - serverless functions
+- **Vercel** (web app + API routes)
 - **CDN** (web component in Phase 2) - jsDelivr or unpkg
 
 ---

@@ -136,16 +136,35 @@ export default function Home() {
                   animationDelay: `${ENTRANCE_DELAY_CARD}ms`,
                 }}
               >
-                <InteractivePostCard post={post} settings={settings} onSettingsChange={setSettings} />
+                <InteractivePostCard
+                  post={post}
+                  settings={settings}
+                  onSettingsChange={setSettings}
+                  sourceUrl={sourceUrl ?? undefined}
+                />
               </div>
             )}
           </div>
         </div>
       </main>
 
+      {/* Bottom fade plate (aesthetic scroll fade behind footer) */}
+      <div
+        className="fixed bottom-0 left-0 right-0 pointer-events-none z-[40]"
+        style={{
+          height: 120,
+          background:
+            theme.appBg.startsWith('#') && theme.appBg.length === 7
+              ? `linear-gradient(to top, ${theme.appBg} 0%, ${theme.appBg}E6 45%, ${theme.appBg}00 100%)`
+              : `linear-gradient(to top, ${theme.appBg} 0%, transparent 100%)`,
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+        }}
+      />
+
       {/* Privacy note */}
       <div
-        className="fixed bottom-5 left-1/2 -translate-x-1/2 text-xs font-medium whitespace-nowrap"
+        className="fixed bottom-5 left-1/2 -translate-x-1/2 text-xs font-medium whitespace-nowrap z-[50]"
         style={{
           color: theme.textTertiary,
           opacity: 0.6,

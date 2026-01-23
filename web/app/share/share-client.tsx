@@ -141,6 +141,13 @@ export default function InteractiveSharePage() {
 
   if (!post) return null
 
-  return <InteractivePostCard post={post} settings={settings} onSettingsChange={setSettings} />
+  return (
+    <InteractivePostCard
+      post={post}
+      settings={settings}
+      onSettingsChange={setSettings}
+      sourceUrl={sourceUrl ?? undefined}
+    />
+  )
 }
 

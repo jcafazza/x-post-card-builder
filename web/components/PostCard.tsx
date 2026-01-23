@@ -12,6 +12,7 @@ interface PostCardProps {
 
 export default function PostCard({ post, settings }: PostCardProps) {
   const theme = getThemeStyles(settings.theme)
+  const hasImages = post.content.images.length > 0
 
   // Map shadow intensity to Tailwind classes - type-safe mapping
   const shadowClasses: Record<ShadowIntensity, string> = {
@@ -69,6 +70,11 @@ export default function PostCard({ post, settings }: PostCardProps) {
               {post.author.name.charAt(0)}
             </div>
           )}
+          {/* Subtle inner stroke overlay (match post image treatment) */}
+          <div
+            className="pointer-events-none absolute inset-0 rounded-full"
+            style={{ boxShadow: `inset 0 0 0 1px ${theme.imageInnerStroke}` }}
+          />
         </div>
 
         <div className="flex-1 min-w-0">
@@ -101,7 +107,7 @@ export default function PostCard({ post, settings }: PostCardProps) {
       </div>
 
       {/* Content Section */}
-      <div className="mb-4">
+      <div className={hasImages || settings.showDate ? 'mb-4' : 'mb-0'}>
         <p
           className="text-base whitespace-pre-wrap break-words"
           style={{ color: theme.textPrimary }}
@@ -111,8 +117,8 @@ export default function PostCard({ post, settings }: PostCardProps) {
       </div>
 
       {/* Images Section */}
-      {post.content.images.length > 0 && (
-        <div className="mb-4 -mx-6 px-6">
+      {hasImages && (
+        <div className={`${settings.showDate ? 'mb-4' : 'mb-0'} -mx-6 px-6`}>
           <div className={`grid gap-2 ${post.content.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
             {post.content.images.map((image, index) => (
               <div
@@ -120,6 +126,7 @@ export default function PostCard({ post, settings }: PostCardProps) {
                 className="relative w-full overflow-hidden rounded-2xl"
                 style={{
                   aspectRatio: post.content.images.length === 1 ? '16/9' : '1',
+                  maxHeight: '180px',
                 }}
               >
                 <img
@@ -160,6 +167,7 @@ export default function PostCard({ post, settings }: PostCardProps) {
           {formatTimestamp(post.timestamp)}
         </span>
       </div>
+
     </div>
   )
 }

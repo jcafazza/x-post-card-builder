@@ -1,10 +1,11 @@
 /**
  * X Post Scraper API Route
  *
- * Uses Puppeteer (with @sparticuz/chromium for Vercel) to scrape X posts by:
- * 1. Loading the page in a real browser
- * 2. Waiting for JavaScript to render
- * 3. Extracting post data from the DOM
+ * Fetches public X post data without API keys via:
+ * 1) Twitter syndication JSON (`cdn.syndication.twimg.com/tweet-result`) with required token
+ * 2) Syndication embed HTML fallback (`cdn.syndication.twimg.com/tweet`)
+ *
+ * Media URLs are proxied through `/api/image` for same-origin loading/export reliability.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -126,6 +127,16 @@ type SyndicationTweet = {
   }>
 }
 
+function unwrapSyndicationTweet(data: any): any {
+  // Some responses include a nested `tweet` object; others are already tweet-shaped.
+  return data?.tweet ?? data?.data?.tweet ?? data
+}
+
+function unwrapSyndicationUser(data: any, tweet: any): any {
+  // Prefer an explicit `user` field, then anything embedded in the tweet.
+  return data?.user ?? tweet?.user ?? data?.data?.user ?? null
+}
+
 /**
  * Normalizes an X avatar URL to get the high-resolution version (400x400).
  * Also strips session-based query parameters that can cause image loading failures.
@@ -198,20 +209,20 @@ function normalizeTwimgMediaUrl(input?: string): NormalizedMedia | null {
 /**
  * Extracts high-quality images from the syndication response.
  */
-function extractMedia(data: SyndicationTweet): string[] {
+function extractMedia(data: any): string[] {
   const rawCandidates: string[] = []
   const anyData = data as any
 
   // 1. Try photos array (standard images)
   if (data.photos && Array.isArray(data.photos)) {
-    data.photos.forEach((p) => {
+    data.photos.forEach((p: any) => {
       if (p?.url) rawCandidates.push(p.url)
     })
   }
 
   // 2. Try mediaDetails (often contains video thumbnails/gifs or high-res variants)
   if (data.mediaDetails && Array.isArray(data.mediaDetails)) {
-    data.mediaDetails.forEach((m) => {
+    data.mediaDetails.forEach((m: any) => {
       if (m?.media_url_https) rawCandidates.push(m.media_url_https)
     })
   }
@@ -264,21 +275,87 @@ function extractMedia(data: SyndicationTweet): string[] {
   return out
 }
 
-function extractBestText(data: SyndicationTweet): string {
+function extractBestText(data: any): string {
+  // "Note tweets" (Show more) and other expanded formats have been observed under
+  // various nested keys. If we can't find a good known field, fall back to a
+  // bounded deep search for the longest plausible "*text*" value.
+  const findDeepBestText = (root: any): string => {
+    const stack: Array<{ key: string; value: any; depth: number }> = [{ key: '', value: root, depth: 0 }]
+    const visited = new Set<any>()
+
+    let best = ''
+    let nodes = 0
+    const MAX_NODES = 4000
+    const MAX_DEPTH = 8
+
+    const isProbablyTweetText = (k: string, v: string): boolean => {
+      const key = k.toLowerCase()
+      if (!key.includes('text')) return false
+      if (key.includes('display_url') || key.includes('expanded_url')) return false
+      if (key === 'url') return false
+      if (/^https?:\/\//i.test(v.trim())) return false
+      // Avoid accidentally selecting chunks of HTML/markup
+      if (v.includes('<blockquote') || v.includes('<p') || v.includes('</')) return false
+      return true
+    }
+
+    while (stack.length > 0 && nodes < MAX_NODES) {
+      const cur = stack.pop()!
+      nodes++
+
+      const { key, value, depth } = cur
+      if (value && typeof value === 'object') {
+        if (visited.has(value)) continue
+        visited.add(value)
+      }
+
+      if (typeof value === 'string') {
+        if (isProbablyTweetText(key, value) && value.length > best.length) best = value
+        continue
+      }
+
+      if (!value || typeof value !== 'object' || depth >= MAX_DEPTH) continue
+
+      if (Array.isArray(value)) {
+        for (let i = 0; i < value.length; i++) {
+          stack.push({ key, value: value[i], depth: depth + 1 })
+        }
+      } else {
+        for (const [k, v] of Object.entries(value)) {
+          stack.push({ key: k, value: v, depth: depth + 1 })
+        }
+      }
+    }
+
+    return best
+  }
+
   const anyData = data as any
 
   const candidates: Array<unknown> = [
     anyData?.note_tweet?.text,
     anyData?.note_tweet?.note_tweet_results?.result?.text,
+    anyData?.noteTweet?.text,
+    anyData?.noteTweet?.noteTweetResults?.result?.text,
+    anyData?.extended_tweet?.full_text,
+    anyData?.retweeted_status?.extended_tweet?.full_text,
+    anyData?.legacy?.full_text,
     anyData?.full_text,
     anyData?.text,
   ]
 
   const strings = candidates.filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
-  if (strings.length === 0) return ''
+  if (strings.length === 0) return findDeepBestText(anyData)
 
   // Prefer the longest option (note tweets are typically much longer than `text`).
-  return strings.reduce((best, cur) => (cur.length > best.length ? cur : best), strings[0])
+  const best = strings.reduce((b, cur) => (cur.length > b.length ? cur : b), strings[0])
+  // If it still looks truncated, try deep search (some payloads keep the full
+  // text elsewhere).
+  if (best.trim().endsWith('…')) {
+    const deep = findDeepBestText(anyData)
+    if (deep.length > best.length) return deep
+  }
+  return best
 }
 
 /**
@@ -313,7 +390,7 @@ function stripTrailingMediaShortlinks(input: string): string {
   return text
 }
 
-function collectMediaShortUrls(data: SyndicationTweet): Set<string> {
+function collectMediaShortUrls(data: any): Set<string> {
   const urls = data.entities?.urls
   if (!Array.isArray(urls)) return new Set()
 
@@ -532,7 +609,15 @@ export async function POST(request: NextRequest) {
     // Check for demo/sample mode
     const keyword = url.toLowerCase().trim()
     if (SAMPLE_POSTS[keyword]) {
-      return NextResponse.json(SAMPLE_POSTS[keyword])
+      const sample = SAMPLE_POSTS[keyword]
+      return NextResponse.json({
+        ...sample,
+        author: {
+          ...sample.author,
+          // Keep demo mode consistent with production: proxy remote images so export works reliably.
+          avatar: proxyImageUrl(sample.author.avatar),
+        },
+      })
     }
 
     // Validate it's an X/Twitter URL
@@ -552,21 +637,25 @@ export async function POST(request: NextRequest) {
     // 1) Try syndication JSON (best fidelity for modern posts).
     try {
       const data = await fetchViaSyndication(tweetId)
+      const tweet = unwrapSyndicationTweet(data)
+      const user = unwrapSyndicationUser(data, tweet)
       
       // Use the improved media extraction
-      const images = extractMedia(data)
-      const mediaShortUrls = collectMediaShortUrls(data)
-      const rawText = extractBestText(data)
+      const images = extractMedia(tweet)
+      const mediaShortUrls = collectMediaShortUrls(tweet)
+      const rawText = extractBestText(tweet)
       const text = cleanTweetText(rawText, { hasImages: images.length > 0, mediaShortUrls })
 
-      const name = data.user?.name || username
-      const handle = data.user?.screen_name ? `@${data.user.screen_name}` : `@${username}`
+      const name = user?.name || username
+      const handle = user?.screen_name ? `@${user.screen_name}` : `@${username}`
       
       // Use the improved avatar normalization
-      const avatarRaw = normalizeAvatarUrl(data.user?.profile_image_url_https) || `https://unavatar.io/twitter/${username}`
+      const avatarRaw = normalizeAvatarUrl(user?.profile_image_url_https) || `https://unavatar.io/twitter/${username}`
       
-      const verified = Boolean(data.user?.verified || data.user?.is_blue_verified)
-      const timestamp = data.created_at ? new Date(data.created_at).toISOString() : new Date().toISOString()
+      const verified = Boolean(user?.verified || user?.is_blue_verified)
+      const timestamp = tweet?.created_at
+        ? new Date(tweet.created_at).toISOString()
+        : new Date().toISOString()
 
       if (text || images.length > 0) {
         return NextResponse.json({

@@ -1,11 +1,12 @@
 {
   "name": "x-post-card-builder",
   "version": "1.0.0",
-  "description": "Transform X (Twitter) posts into beautiful, customizable visual cards",
-  "main": "api/scrape-post.js",
+  "private": true,
+  "description": "Transform public X (Twitter) posts into beautiful, customizable visual cards.",
   "type": "module",
   "scripts": {
-    "dev": "vercel dev",
+    "dev": "cd web && npm run dev",
+    "build": "cd web && npm run build",
     "deploy": "vercel --prod"
   },
   "keywords": [

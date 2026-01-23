@@ -5,7 +5,7 @@ This file provides context and guidelines for Claude Code when working on this p
 ## Project Overview
 
 **Project Name:** X Post Card Builder
-**Type:** Web Application (Framer + Vercel API)
+**Type:** Next.js web application (UI + API routes)
 **Purpose:** Transform X (Twitter) posts into beautiful, customizable visual cards for export and embedding
 
 **User Context:** Software designer with low-to-mid level technical understanding
@@ -25,10 +25,10 @@ Unlike screenshot tools for social sharing, this focuses on giving designers gra
 Designers, content creators, and personal brand builders who want beautiful X post embeds on their websites.
 
 **MVP scope (2-3 days):**
-- Vercel API scraper (Cheerio-based, no X API needed)
-- Framer site with live preview and customization controls
-- PNG export using html-to-image
-- 1-2 preset templates
+- Next.js app with live preview and customization controls
+- Server-side scraping (no X API needed) via syndication endpoints
+- PNG export using html2canvas
+- Shareable, view-only links that preserve settings
 
 **Phase 2:**
 - Web component for embeds (`<x-card>`)
@@ -38,14 +38,19 @@ Designers, content creators, and personal brand builders who want beautiful X po
 
 ```
 x-post-visualizer/
-├── api/
-│   └── scrape-post.js          # Vercel serverless function - scrapes X posts
-├── framer-components/
-│   ├── APIFetcher.tsx          # Framer component to fetch post data
-│   └── PNGExporter.tsx         # Framer component to export PNG
+├── web/
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── scrape-post/route.ts # POST /api/scrape-post
+│   │   │   └── image/route.ts      # GET  /api/image?url=...
+│   │   ├── share/                  # Share page (URL-driven settings)
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── components/
+│   ├── lib/
+│   └── types/
 ├── .claude/                    # Claude Code configuration
 ├── package.json                # Dependencies
-├── vercel.json                 # Vercel configuration
 ├── README.md                   # Setup and usage instructions
 ├── PRODUCT.md                  # Full product specification
 └── CLAUDE.md                   # This file
@@ -99,48 +104,33 @@ x-post-visualizer/
 
 ## Tech Stack
 
-### Frontend (Framer)
-- Visual design + hosting platform
-- Code components for custom functionality
-- Real-time preview updates
-- Built-in responsive design
-
-**Why Framer:**
-- Design-focused product needs a design-focused tool
-- Fast iteration speed (ship in 2-3 days)
-- Code components give flexibility without losing design control
-- Built-in hosting eliminates deployment complexity
+### Frontend (Next.js)
+- App Router + React + TypeScript
+- Tailwind CSS for styling
+- Shared design constants for motion + theme
 
 ### Backend (Vercel Serverless)
 - Node.js runtime
-- Cheerio for HTML parsing (lightweight, fast)
+- Tokenized syndication fetch + HTML embed fallback (no API keys)
 - Auto-scaling serverless functions
 - Free tier suitable for MVP
 
-**Why Cheerio (not Puppeteer):**
-- Much faster and lighter than headless browser
-- Lower memory footprint on serverless
-- Works if X serves post data in initial HTML
-- Can upgrade to Puppeteer later if needed for metrics
+**Why syndication endpoints (not Puppeteer):**
+- Much faster and lighter than running a headless browser
+- Better fit for serverless constraints
+- Works without X API keys for most public posts
 
 ### Libraries
-- `cheerio` - HTML parsing for scraping
-- `html2canvas` (via CDN) - PNG export in browser
+- `html2canvas` - client-side PNG export
+- (No Puppeteer in production)
 
 ### Deployment
-- Framer (frontend) - built-in hosting
-- Vercel (API) - serverless functions
+- Vercel (web app + API routes)
 - CDN (Phase 2 web component) - jsDelivr or unpkg
 
 ## Dependencies
 
-```json
-{
-  "cheerio": "^1.0.0-rc.12"
-}
-```
-
-**Note:** PNG export uses html2canvas loaded from CDN (no npm dependency needed)
+See `web/package.json`.
 
 ## Custom Commands - Product Development Workflow
 
@@ -228,7 +218,7 @@ Commands follow a natural workflow but can be used independently.
 - **MVP speed**: Ship faster without auth complexity
 
 ### API Response Structure
-The scraper returns structured JSON matching Framer's needs:
+The scraper returns structured JSON matching the card UI:
 - `author` - Display name, handle, avatar, verified status
 - `content` - Post text and image URLs
 - `timestamp` - Post creation time
@@ -236,34 +226,20 @@ The scraper returns structured JSON matching Framer's needs:
 **Customization Options:**
 - Theme: "light", "dim", "dark"
 - Border Radius: "0px", "8px", "16px", "20px", "24px"
-- Shadow Intensity: "none", "light", "medium", "strong"
+- Shadow Intensity: "flat", "raised", "floating", "elevated"
 - Show Date: toggle
 
 ## Common Tasks
 
 ### Setup
 ```bash
-# Install dependencies
+cd web
 npm install
-
-# Deploy API to Vercel
-vercel
+npm run dev
 ```
 
-### Development
-```bash
-# Test API locally (if needed)
-vercel dev
-
-# Deploy updates
-vercel --prod
-```
-
-### Framer Integration
-1. Copy code from `framer-components/` into Framer Code tab
-2. Update `API_ENDPOINT` in APIFetcher.tsx with your Vercel URL
-3. Apply overrides/components to your Framer design
-4. PNG export uses html2canvas from CDN (no package installation needed)
+### Deploy
+Deploy the `web` directory as a Next.js project on Vercel (UI + API routes ship together).
 
 ## Known Limitations
 
@@ -286,33 +262,13 @@ vercel --prod
 
 ## Next Steps After Setup
 
-1. **Design Framer UI**
-   - Card preview area (large, prominent)
-   - URL input field
-   - Customization controls (sliders, toggles, color pickers)
-   - Export button
-
-2. **Wire Up Components**
-   - Apply APIFetcher override to input field
-   - Bind post data to card UI elements
-   - Connect controls to card styling
-   - Add PNGExporter component
-
-3. **Test & Polish**
-   - Test with various X posts
-   - Handle loading/error states
-   - Responsive design
-   - Visual polish
-
-4. **Deploy**
-   - Publish Framer site
-   - Test end-to-end
-   - Share with target users
+1. **Polish UI + motion**
+2. **Harden scraping fallbacks**
+3. **Deploy to Vercel**
 
 ## References
 
-- [Framer Documentation](https://www.framer.com/developers/)
 - [Vercel Serverless Functions](https://vercel.com/docs/functions)
-- [Cheerio Docs](https://cheerio.js.org/)
-- [html-to-image GitHub](https://github.com/bubkoo/html-to-image)
-- [Product Spec](PRODUCT.md) - Full feature specification
+- [Next.js App Router](https://nextjs.org/docs/app)
+- [html2canvas](https://github.com/niklasvh/html2canvas)
+- [Product Spec](PRODUCT.md)
