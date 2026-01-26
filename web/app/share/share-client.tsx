@@ -7,7 +7,7 @@ import { fetchPostData } from '@/lib/api'
 import { getThemeStyles } from '@/lib/themes'
 import { isShadow, isTheme } from '@/types/post'
 import type { CardSettings, PostData, ShadowIntensity, Theme } from '@/types/post'
-import { ANIMATION_DELIBERATE, EASING_ELEGANT, EASING_STANDARD } from '@/constants/ui'
+import { ANIMATION_DELIBERATE, EASING_STANDARD } from '@/constants/ui'
 import {
   CARD_DEFAULT_RADIUS,
   CARD_DEFAULT_WIDTH,

@@ -3,7 +3,6 @@ import InteractiveSharePage from './share-client'
 import AnimatedHandMetal from '@/components/AnimatedHandMetal'
 import { getThemeStyles } from '@/lib/themes'
 import { ANIMATION_DELIBERATE, EASING_ELEGANT, EASING_STANDARD } from '@/constants/ui'
-import { CARD_DEFAULT_RADIUS } from '@/constants/card'
 
 /**
  * Share Preview Page

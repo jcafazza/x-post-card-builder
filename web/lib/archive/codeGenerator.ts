@@ -1,6 +1,6 @@
 import { PostData, CardSettings, ShadowIntensity } from '@/types/post'
-import { getThemeStyles } from './themes'
-import { formatTimestamp } from './utils'
+import { getThemeStyles } from '../themes'
+import { formatTimestamp } from '../utils'
 
 /**
  * ─────────────────────────────────────────────────────────────────────────────

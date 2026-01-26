@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { PostData, ThemeStyles } from '@/types/post'
 import { fetchPostData } from '@/lib/api'
-import { ANIMATION_STANDARD, ANIMATION_DELIBERATE, ANIMATION_MICRO, EASING_STANDARD, INPUT_BUTTON_PADDING_RIGHT } from '@/constants/ui'
+import { ANIMATION_STANDARD, EASING_STANDARD, INPUT_BUTTON_PADDING_RIGHT } from '@/constants/ui'
 import { Check, Loader2, AlertCircle } from 'lucide-react'
 
 interface URLInputProps {

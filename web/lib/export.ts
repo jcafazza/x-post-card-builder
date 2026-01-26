@@ -131,7 +131,7 @@ export async function exportElementToPNG(
       foreignObjectRendering: false,
       removeContainer: true,
       imageTimeout: 15000,
-      onclone: (clonedDoc, clonedEl) => {
+      onclone: (_clonedDoc, clonedEl) => {
         // Ensure the cloned element has no shadow and no clipping
         const cloned = clonedEl as HTMLElement
         if (cloned) {
