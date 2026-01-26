@@ -1,49 +1,13 @@
 {
-  "name": "x-post-card-builder",
+  "name": "x-post-card-builder-workspace",
   "version": "1.0.0",
   "private": true,
-  "description": "Transform public X (Twitter) posts into beautiful, customizable visual cards.",
-  "type": "module",
+  "description": "Workspace root for X Post Card Builder. All dependencies are in web/package.json",
   "scripts": {
     "dev": "cd web && npm run dev",
     "build": "cd web && npm run build",
-    "deploy": "vercel --prod"
-  },
-  "keywords": [
-    "twitter",
-    "x",
-    "post",
-    "card",
-    "embed",
-    "framer",
-    "design"
-  ],
-  "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "@base-ui/react": "^1.1.0",
-    "@types/node": "^25.0.10",
-    "@types/react": "^19.2.9",
-    "@types/react-dom": "^19.2.3",
-    "autoprefixer": "^10.4.23",
-    "cheerio": "^1.0.0-rc.12",
-    "html2canvas": "^1.4.1",
-    "next": "^16.1.4",
-    "postcss": "^8.5.6",
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3",
-    "tailwindcss": "^4.1.18",
-    "typescript": "^5.9.3"
-  },
-  "devDependencies": {
-    "vercel": "^50.4.8"
-  },
-  "overrides": {
-    "path-to-regexp": "^6.3.0",
-    "undici": "^6.22.1",
-    "tar": "^7.5.4"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "start": "cd web && npm run start",
+    "lint": "cd web && npm run lint",
+    "deploy": "cd web && vercel --prod"
   }
 }

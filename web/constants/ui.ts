@@ -83,3 +83,34 @@ export const TOOLTIP_DISPLAY_DURATION = 1500
 export const ENTRANCE_DELAY_HEADER = 0
 export const ENTRANCE_DELAY_TOOLBAR = 200
 export const ENTRANCE_DELAY_CARD = 400
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SPACING CONSTANTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Standard button size for touch targets (WCAG minimum: 44x44px) */
+export const BUTTON_SIZE = 44
+
+/** Padding for input button (right side) in pixels */
+export const INPUT_BUTTON_PADDING_RIGHT = 65
+
+/** Top padding for main content area below header (in pixels) */
+export const HEADER_CONTENT_PADDING_TOP = 148
+
+/** Spacing between header input and toolbar (in pixels) */
+export const CONTENT_VERTICAL_SPACING = 40
+
+/** Spacing between toolbar and card preview (in pixels) */
+export const TOOLBAR_CARD_SPACING = 20
+
+/** Height of footer fade gradient (in pixels) */
+export const FOOTER_FADE_HEIGHT = 120
+
+/** Fade zone distance for toolbar scroll fade (in pixels) */
+export const TOOLBAR_FADE_ZONE = 80
+
+/** Footer fade opacity at bottom (0-1) */
+export const FOOTER_FADE_OPACITY = 0.9
+
+/** Footer fade gradient stop position (0-1, where 0.25 = 75% from top) */
+export const FOOTER_FADE_STOP = 0.25

@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { forwardRef } from 'react'
+import { useReducedMotion } from '@/hooks/useReducedMotion'
 
 interface AnimatedHandMetalProps {
   size?: number
@@ -10,6 +11,8 @@ interface AnimatedHandMetalProps {
 
 const AnimatedHandMetal = forwardRef<HTMLDivElement, AnimatedHandMetalProps>(
   ({ className, size = 28, ...props }, ref) => {
+    const prefersReducedMotion = useReducedMotion()
+    
     return (
       <div
         ref={ref}
@@ -24,10 +27,10 @@ const AnimatedHandMetal = forwardRef<HTMLDivElement, AnimatedHandMetalProps>(
           strokeLinejoin="round"
           strokeWidth="1.5"
           style={{ originX: "50%", originY: "90%" }}
-          animate={{
+          animate={prefersReducedMotion ? {} : {
             rotate: [0, -15, 15, -10, 10, 0],
           }}
-          transition={{
+          transition={prefersReducedMotion ? {} : {
             duration: 0.8,
             ease: "easeInOut",
             repeat: Infinity,

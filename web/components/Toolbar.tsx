@@ -1,6 +1,6 @@
 'use client'
 
-import { CardSettings, Theme, ShadowIntensity, ThemeStyles, THEMES, SHADOW_INTENSITIES } from '@/types/post'
+import { CardSettings, ShadowIntensity, ThemeStyles, THEMES, SHADOW_INTENSITIES } from '@/types/post'
 import { exportElementToPNG } from '@/lib/export'
 import { useState, useRef, useEffect } from 'react'
 import { Menu as BloomMenu } from 'bloom-menu'
@@ -131,7 +131,9 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
         exportTimerRef.current = null
       }, 2000)
     } catch (error) {
-      console.error('Export failed:', error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Export failed:', error)
+      }
       const message = error instanceof Error ? error.message : 'Failed to export PNG'
       setExportError(message)
 
@@ -177,9 +179,10 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
   }
 
   const iconClasses = "w-5 h-5"
-  const buttonBase = "w-11 h-11 rounded-full cursor-pointer flex items-center justify-center border outline-none"
+  const buttonBase = "w-11 h-11 rounded-full cursor-pointer flex items-center justify-center border outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
 
-  const getShareButtonStyle = (isHovered = false, isFocused = false) => ({
+  // Share button style - parameters reserved for future hover/focus states
+  const getShareButtonStyle = (_isHovered = false, _isFocused = false) => ({
     backgroundColor: 'transparent',
     border: 'none',
     color: currentTheme.textSecondary,
@@ -191,8 +194,9 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
 
   /**
    * Generates dynamic styles for toolbar buttons based on their current state.
+   * @param isFocused - Reserved for future focus ring styling
    */
-  const getButtonStyle = (buttonId: string, isActive = false, isHovered = false, isFocused = false) => {
+  const getButtonStyle = (buttonId: string, isActive = false, isHovered = false, _isFocused = false) => {
     const isPressed = pressedButton?.id === buttonId
     const bounceName =
       isPressed
@@ -234,7 +238,7 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
 
   return (
     <div 
-      className="relative z-[60] flex items-center justify-between"
+      className="relative z-40 flex items-center justify-between"
       style={{ width: `${cardWidth}px` }}
     >
         {/* Export Error Overlay */}
@@ -266,9 +270,9 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
             style={getButtonStyle('theme', true, hoveredButton === 'theme', focusedButton === 'theme')}
             aria-label="Cycle Theme"
           >
-            {settings.theme === 'light' && <Sun className={iconClasses} strokeWidth={1.5} />}
-            {settings.theme === 'dim' && <SunMoon className={iconClasses} strokeWidth={1.5} />}
-            {settings.theme === 'dark' && <Moon className={iconClasses} strokeWidth={1.5} />}
+            {settings.theme === 'light' && <Sun className={iconClasses} strokeWidth={1.5} aria-hidden="true" />}
+            {settings.theme === 'dim' && <SunMoon className={iconClasses} strokeWidth={1.5} aria-hidden="true" />}
+            {settings.theme === 'dark' && <Moon className={iconClasses} strokeWidth={1.5} aria-hidden="true" />}
           </button>
 
           <button
@@ -286,6 +290,7 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
               className={iconClasses}
               strokeWidth={1.5}
               style={{ opacity: shadowOpacityMap[settings.shadowIntensity] }}
+              aria-hidden="true"
             />
           </button>
 
@@ -300,7 +305,7 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
             style={getButtonStyle('date', settings.showDate, hoveredButton === 'date', focusedButton === 'date')}
             aria-label="Toggle Date"
           >
-            <Calendar className={iconClasses} strokeWidth={1.5} />
+            <Calendar className={iconClasses} strokeWidth={1.5} aria-hidden="true" />
           </button>
         </div>
 
@@ -324,6 +329,7 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
                 transform: `rotate(${resetRotation}deg)`,
                 transition: `transform ${ANIMATION_DELIBERATE}ms ${EASING_STANDARD}`,
               }}
+              aria-hidden="true"
             />
           </button>
 
@@ -366,7 +372,7 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
                     }}
                     aria-label="Share"
                   >
-                  <Share className={iconClasses} strokeWidth={1.5} />
+                  <Share className={iconClasses} strokeWidth={1.5} aria-hidden="true" />
                 </button>
               </BloomMenu.Trigger>
 
@@ -377,11 +383,11 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
                   className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${menuText} ${menuHoverBg} disabled:opacity-50`}
                 >
                   {isExporting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.8} />
+                    <Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.8} aria-hidden="true" />
                   ) : isExported ? (
-                    <Check className="w-4 h-4" strokeWidth={1.8} />
+                    <Check className="w-4 h-4" strokeWidth={1.8} aria-hidden="true" />
                   ) : (
-                    <Download className="w-4 h-4" strokeWidth={1.8} />
+                    <Download className="w-4 h-4" strokeWidth={1.8} aria-hidden="true" />
                   )}
                   <span className="flex-1">{isExported ? 'Exported!' : 'Export as PNG'}</span>
                 </BloomMenu.Item>
@@ -404,9 +410,9 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
                   className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${menuText} ${menuHoverBg} disabled:opacity-50`}
                 >
                   {isCopied ? (
-                    <Check className="w-4 h-4" strokeWidth={1.8} />
+                    <Check className="w-4 h-4" strokeWidth={1.8} aria-hidden="true" />
                   ) : (
-                    <Link className="w-4 h-4" strokeWidth={1.8} />
+                    <Link className="w-4 h-4" strokeWidth={1.8} aria-hidden="true" />
                   )}
                   <span className="flex-1">{isCopied ? 'Copied!' : 'Share link'}</span>
                 </BloomMenu.Item>
@@ -418,7 +424,7 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
                   onSelect={() => {}}
                   className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${menuText} ${menuHoverBg} opacity-50`}
                 >
-                  <Code className="w-4 h-4" strokeWidth={1.8} />
+                  <Code className="w-4 h-4" strokeWidth={1.8} aria-hidden="true" />
                   <span className="flex-1">Copy snippet</span>
                   <span className="text-[11px] font-semibold opacity-60">Soon</span>
                 </BloomMenu.Item>

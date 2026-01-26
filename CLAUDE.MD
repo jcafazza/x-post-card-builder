@@ -46,14 +46,19 @@ x-post-visualizer/
 │   │   ├── share/                  # Share page (URL-driven settings)
 │   │   ├── layout.tsx
 │   │   └── page.tsx
-│   ├── components/
-│   ├── lib/
-│   └── types/
-├── .claude/                    # Claude Code configuration
-├── package.json                # Dependencies
-├── README.md                   # Setup and usage instructions
-├── PRODUCT.md                  # Full product specification
-└── CLAUDE.md                   # This file
+│   ├── components/                # React components
+│   ├── lib/                       # Utilities, themes, API client
+│   │   └── archive/               # Archived code (Phase 2 features)
+│   ├── types/                     # TypeScript type definitions
+│   ├── constants/                 # UI constants (animations, card settings)
+│   └── package.json               # All dependencies (single source of truth)
+├── .claude/                       # Claude Code configuration
+├── LICENSE                        # MIT License
+├── README.md                      # Setup and usage instructions
+├── PRODUCT.md                     # Full product specification
+├── THEMES.md                      # Design system documentation
+├── QUICKSTART.md                  # Quick start guide
+└── CLAUDE.MD                      # This file
 ```
 
 ## Development Guidelines

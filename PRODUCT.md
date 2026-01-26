@@ -231,9 +231,10 @@ Unlike existing tools that focus on screenshot generation for social sharing, th
 
 ### Frontend
 - **Next.js** (App Router) + **React** + **TypeScript**
-- **Tailwind CSS**
-- **Base UI**
-- **Framer Motion** (micro-interactions)
+- **Tailwind CSS** (styling)
+- **Framer Motion** (animation library - used for hand icon animation)
+- **Lucide React** (icons)
+- **Bloom Menu** (menu component)
 
 ### Backend (API Routes)
 - **Next.js Route Handlers** (Vercel Functions, Node.js runtime)

@@ -37,7 +37,7 @@ export default function SharePage() {
             }}
           >
             <AnimatedHandMetal size={40} />
-            <span className="text-sm font-medium">Vibin&apos; &amp; cookin&apos;...</span>
+            <span className="text-sm font-medium">Vibin&apos; &amp; cookin&apos;…</span>
           </div>
         }
       >

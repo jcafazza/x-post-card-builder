@@ -25,3 +25,9 @@ export const CARD_CORNER_ZONE = 24
 
 /** Length of the resize handles in pixels */
 export const CARD_HANDLE_LENGTH = 12
+
+/** Maximum overshoot distance for rubberband effect when dragging beyond max width (in pixels) */
+export const RUBBERBAND_MAX_OVERSHOOT = 30
+
+/** Spacing below the card for the "View original post" button (in pixels) */
+export const CARD_BOTTOM_MARGIN = 20

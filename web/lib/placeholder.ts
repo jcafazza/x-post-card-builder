@@ -20,6 +20,15 @@ const defaultPlaceholder: PostData = {
 
 /**
  * Returns the default placeholder post data.
+ * Used when no post has been imported yet to show a demo card.
+ * 
+ * @returns PostData object with Brad Radius placeholder content
+ * 
+ * @example
+ * ```ts
+ * const placeholder = getDefaultPlaceholder()
+ * // Returns: { author: { name: 'Brad Radius', ... }, content: { text: '...' }, ... }
+ * ```
  */
 export function getDefaultPlaceholder(): PostData {
   return defaultPlaceholder

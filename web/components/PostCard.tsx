@@ -91,6 +91,7 @@ export default function PostCard({ post, settings }: PostCardProps) {
                 className="w-4 h-4 flex-shrink-0"
                 viewBox="0 0 24 24"
                 fill={theme.accent}
+                aria-hidden="true"
               >
                 <path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z" />
               </svg>
@@ -120,31 +121,38 @@ export default function PostCard({ post, settings }: PostCardProps) {
       {hasImages && (
         <div className={`${settings.showDate ? 'mb-4' : 'mb-0'} -mx-6 px-6`}>
           <div className={`grid gap-2 ${post.content.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-            {post.content.images.map((image, index) => (
-              <div
-                key={index}
-                className="relative w-full overflow-hidden rounded-2xl"
-                style={{
-                  aspectRatio: post.content.images.length === 1 ? '16/9' : '1',
-                  maxHeight: '180px',
-                }}
-              >
-                <img
-                  src={image}
-                  alt={`Post image ${index + 1}`}
-                  className="absolute inset-0 w-full h-full object-cover"
-                  draggable={false}
-                  loading="eager"
-                  crossOrigin="anonymous"
-                  referrerPolicy="no-referrer"
-                />
-                {/* Subtle inner stroke overlay (stays visible above the image) */}
+            {post.content.images.map((image, index) => {
+              const isThirdImage = post.content.images.length === 3 && index === 2
+              return (
                 <div
-                  className="pointer-events-none absolute inset-0 rounded-2xl"
-                  style={{ boxShadow: `inset 0 0 0 1px ${theme.imageInnerStroke}` }}
-                />
-              </div>
-            ))}
+                  key={index}
+                  className={`relative w-full overflow-hidden rounded-2xl ${isThirdImage ? 'col-span-2' : ''}`}
+                  style={{
+                    aspectRatio: post.content.images.length === 1 
+                      ? '16/9' 
+                      : isThirdImage 
+                        ? '16/9' 
+                        : '1',
+                    maxHeight: '180px',
+                  }}
+                >
+                  <img
+                    src={image}
+                    alt={`Post image ${index + 1}`}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    draggable={false}
+                    loading="eager"
+                    crossOrigin="anonymous"
+                    referrerPolicy="no-referrer"
+                  />
+                  {/* Subtle inner stroke overlay (stays visible above the image) */}
+                  <div
+                    className="pointer-events-none absolute inset-0 rounded-2xl"
+                    style={{ boxShadow: `inset 0 0 0 1px ${theme.imageInnerStroke}` }}
+                  />
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

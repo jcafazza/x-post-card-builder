@@ -1,5 +1,7 @@
 /**
  * Utility functions for formatting and data manipulation.
+ * 
+ * @module lib/utils
  */
 
 /**
@@ -24,14 +26,25 @@ export function formatTimestamp(timestamp: string): string {
   }).format(date)
 }
 
-/**
- * Type guard to ensure a string is a valid BorderRadius value.
- * Validates against our semantic radius scale.
- */
 import { BorderRadius } from '@/types/post'
 
 const VALID_RADII: BorderRadius[] = ['0', '8', '16', '20', '24']
 
+/**
+ * Type guard to ensure a value is a valid BorderRadius.
+ * Validates against our semantic radius scale (0, 8, 16, 20, 24).
+ * 
+ * @param value - The value to check
+ * @returns True if value is a valid BorderRadius, false otherwise
+ * 
+ * @example
+ * ```ts
+ * if (isBorderRadius('20')) {
+ *   // TypeScript knows value is BorderRadius here
+ *   setRadius(value) // OK
+ * }
+ * ```
+ */
 export function isBorderRadius(value: any): value is BorderRadius {
   return VALID_RADII.includes(value)
 }

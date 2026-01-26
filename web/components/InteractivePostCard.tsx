@@ -1,16 +1,19 @@
 'use client'
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useReducedMotion } from '@/hooks/useReducedMotion'
 import PostCard from './PostCard'
 import { PostData, CardSettings } from '@/types/post'
 import { getThemeStyles } from '@/lib/themes'
-import { ANIMATION_MICRO, ANIMATION_STANDARD, EASING_ELEGANT, EASING_STANDARD } from '@/constants/ui'
+import { ANIMATION_MICRO, ANIMATION_STANDARD, ANIMATION_DELIBERATE, EASING_ELEGANT, EASING_STANDARD, EASING_BOUNCE } from '@/constants/ui'
 import {
   CARD_MIN_WIDTH,
   CARD_MAX_WIDTH,
   CARD_MAX_RADIUS,
   CARD_CORNER_ZONE,
   CARD_HANDLE_LENGTH,
+  RUBBERBAND_MAX_OVERSHOOT as RUBBERBAND_MAX_OVERSHOOT_PX,
+  CARD_BOTTOM_MARGIN,
 } from '@/constants/card'
 import { isBorderRadius } from '@/lib/utils'
 
@@ -67,6 +70,8 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
   const [isResizingRadius, setIsResizingRadius] = useState(false)
   const [hoveredCorner, setHoveredCorner] = useState<string | null>(null)
   const [valueLabel, setValueLabel] = useState<string | null>(null)
+  const [visualWidth, setVisualWidth] = useState<number | null>(null)
+  const prefersReducedMotion = useReducedMotion()
 
   const cardRef = useRef<HTMLDivElement>(null)
   const resizeTypeRef = useRef<'width-left' | 'width-right' | null>(null)
@@ -112,13 +117,32 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
           rawWidth = startWidthRef.current + deltaX
         }
 
-        const snappedWidth = Math.max(
-          CARD_MIN_WIDTH,
-          Math.min(CARD_MAX_WIDTH, Math.round(rawWidth / 2) * 2)
-        )
+        // Rubberband effect: allow overshoot beyond max with resistance
+        const RUBBERBAND_MAX_OVERSHOOT = RUBBERBAND_MAX_OVERSHOOT_PX
+        const roundedRawWidth = Math.round(rawWidth / 2) * 2
+        
+        let visualWidthValue: number
+        let clampedWidth: number
 
-        onSettingsChange({ ...settings, cardWidth: snappedWidth })
-        setValueLabel(`${snappedWidth}px`)
+        if (roundedRawWidth > CARD_MAX_WIDTH) {
+          // Beyond max: apply resistance and allow overshoot up to 30px
+          const overshoot = Math.min(roundedRawWidth - CARD_MAX_WIDTH, RUBBERBAND_MAX_OVERSHOOT)
+          // Resistance: reduce the effect of overshoot (50% resistance)
+          visualWidthValue = CARD_MAX_WIDTH + overshoot * 0.5
+          clampedWidth = CARD_MAX_WIDTH
+        } else if (roundedRawWidth < CARD_MIN_WIDTH) {
+          // Below min: clamp immediately (no rubberband on min)
+          visualWidthValue = CARD_MIN_WIDTH
+          clampedWidth = CARD_MIN_WIDTH
+        } else {
+          // Within bounds: normal behavior
+          visualWidthValue = roundedRawWidth
+          clampedWidth = roundedRawWidth
+        }
+
+        setVisualWidth(visualWidthValue)
+        onSettingsChange({ ...settings, cardWidth: clampedWidth })
+        setValueLabel(`${Math.round(visualWidthValue)}px`)
       } else if (isResizingRadius) {
         const cardRect = cardRef.current?.getBoundingClientRect()
         if (!cardRect) return
@@ -151,6 +175,21 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
     }
 
     const handleMouseUp = () => {
+      // Rubberband snap-back: if visual width exceeds max, animate back to max
+      if (isResizingWidth && visualWidth !== null && visualWidth > CARD_MAX_WIDTH) {
+        // Snap back to max width with bounce animation
+        setVisualWidth(CARD_MAX_WIDTH)
+        // Update settings to ensure it's clamped
+        onSettingsChange({ ...settings, cardWidth: CARD_MAX_WIDTH })
+        // Clear visual width after animation completes
+        setTimeout(() => {
+          setVisualWidth(null)
+        }, ANIMATION_STANDARD)
+      } else {
+        // Clear visual width immediately if no snap-back needed
+        setVisualWidth(null)
+      }
+
       setIsResizingWidth(false)
       setIsResizingRadius(false)
       resizeTypeRef.current = null
@@ -174,7 +213,7 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isResizingWidth, isResizingRadius, hoveredCorner, settings, onSettingsChange])
+  }, [isResizingWidth, isResizingRadius, hoveredCorner, settings, onSettingsChange, visualWidth])
 
   useEffect(() => {
     return () => {
@@ -202,6 +241,7 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
       startXRef.current = e.clientX
       const snappedStartWidth = Math.round(settings.cardWidth / 2) * 2
       startWidthRef.current = snappedStartWidth
+      setVisualWidth(null) // Reset visual width at start of drag
       setValueLabel(`${snappedStartWidth}px`)
     } else if (type === 'corner' && corner) {
       const cursorMap: Record<string, string> = {
@@ -298,28 +338,46 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
     const shouldShow = valueLabel !== null
 
     if (shouldShow) {
+      // Cancel any pending hide/unmount operations
       if (valueButtonHideTimerRef.current) {
         clearTimeout(valueButtonHideTimerRef.current)
         valueButtonHideTimerRef.current = null
       }
-      setIsValueButtonMounted(true)
-      // Fade in next tick for a proper opacity transition
+
+      // Mount the element first (at opacity 0)
+      if (!isValueButtonMounted) {
+        setIsValueButtonMounted(true)
+      }
+
+      // Use a small delay to ensure the element is fully painted before starting the fade-in
+      // This creates a more elegant, deliberate entrance
       if (valueButtonShowRafRef.current) cancelAnimationFrame(valueButtonShowRafRef.current)
       valueButtonShowRafRef.current = requestAnimationFrame(() => {
-        setIsValueButtonVisible(true)
-        valueButtonShowRafRef.current = null
+        valueButtonShowRafRef.current = requestAnimationFrame(() => {
+          // Small additional delay for a more graceful entrance
+          setTimeout(() => {
+            setIsValueButtonVisible(true)
+            valueButtonShowRafRef.current = null
+          }, 16) // ~1 frame delay for smoother transition
+        })
       })
       return
     }
 
-    // valueLabel is null → fade out and then unmount
-    setIsValueButtonVisible(false)
-    if (valueButtonHideTimerRef.current) clearTimeout(valueButtonHideTimerRef.current)
-    valueButtonHideTimerRef.current = setTimeout(() => {
+    // valueLabel is null → fade out gracefully, then unmount
+    if (isValueButtonVisible) {
+      setIsValueButtonVisible(false)
+      // Wait for fade-out animation to complete before unmounting
+      if (valueButtonHideTimerRef.current) clearTimeout(valueButtonHideTimerRef.current)
+      valueButtonHideTimerRef.current = setTimeout(() => {
+        setIsValueButtonMounted(false)
+        valueButtonHideTimerRef.current = null
+      }, ANIMATION_DELIBERATE)
+    } else if (isValueButtonMounted) {
+      // If already invisible but still mounted, unmount immediately
       setIsValueButtonMounted(false)
-      valueButtonHideTimerRef.current = null
-    }, ANIMATION_STANDARD)
-  }, [sourceUrl, valueLabel])
+    }
+  }, [sourceUrl, valueLabel, isValueButtonMounted, isValueButtonVisible])
 
   // Cleanup timers/raf for no-import value button
   useEffect(() => {
@@ -335,8 +393,12 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
         ref={cardRef}
         className="relative"
         style={{
-          width: `${settings.cardWidth}px`,
-          transition: `width ${ANIMATION_MICRO}ms ${EASING_STANDARD}`,
+          width: `${visualWidth !== null ? visualWidth : settings.cardWidth}px`,
+          transition: prefersReducedMotion
+            ? 'none'
+            : visualWidth !== null && visualWidth > CARD_MAX_WIDTH
+            ? `width ${ANIMATION_STANDARD}ms ${EASING_BOUNCE}`
+            : `width ${ANIMATION_MICRO}ms ${EASING_STANDARD}`,
         }}
         onMouseMove={handleHoverMove}
         onMouseLeave={handleHoverLeave}
@@ -407,16 +469,20 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
           )
         })}
 
-        {/* Interactive Zones */}
-        <div
-          className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize z-10"
-          style={{ left: '-8px' }}
+        {/* Interactive Zones - Large touch targets (44px minimum) for accessibility */}
+        <button
+          type="button"
+          className="absolute left-0 top-0 bottom-0 w-11 cursor-ew-resize z-10 bg-transparent border-0 p-0"
+          style={{ left: '-20px' }}
           onMouseDown={(e) => handleMouseDown(e, 'width-left')}
+          aria-label="Resize width left"
         />
-        <div
-          className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize z-10"
-          style={{ right: '-8px' }}
+        <button
+          type="button"
+          className="absolute right-0 top-0 bottom-0 w-11 cursor-ew-resize z-10 bg-transparent border-0 p-0"
+          style={{ right: '-20px' }}
           onMouseDown={(e) => handleMouseDown(e, 'width-right')}
+          aria-label="Resize width right"
         />
         {['top-left', 'top-right', 'bottom-left', 'bottom-right'].map((corner) => {
           const cursorMap: Record<string, string> = {
@@ -426,9 +492,10 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
             'bottom-right': 'nwse-resize',
           }
           return (
-            <div
+            <button
               key={corner}
-              className="absolute z-10 pointer-events-auto"
+              type="button"
+              className="absolute z-10 pointer-events-auto bg-transparent border-0 p-0"
               style={{
                 [corner.includes('left') ? 'left' : 'right']: `-${CARD_CORNER_ZONE}px`,
                 [corner.includes('top') ? 'top' : 'bottom']: `-${CARD_CORNER_ZONE}px`,
@@ -455,7 +522,7 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
 
       {/* Button hidden when no source URL */}
       {sourceUrl && (
-        <div className="flex justify-center" style={{ marginTop: 20 }}>
+        <div className="flex justify-center" style={{ marginTop: CARD_BOTTOM_MARGIN }}>
           <a
             href={sourceUrl}
             target="_blank"
@@ -511,9 +578,10 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
 
       {/* If there's no source URL, show a temporary px readout button while resizing. */}
       {!sourceUrl && isValueButtonMounted && valueLabel && (
-        <div className="flex justify-center" style={{ marginTop: 20 }}>
+        <div className="flex justify-center" style={{ marginTop: CARD_BOTTOM_MARGIN }}>
           <div
-            aria-disabled="true"
+            role="status"
+            aria-live="polite"
             className="inline-flex items-center justify-center text-sm font-medium px-4 py-2 rounded-full border whitespace-nowrap"
             style={{
               backgroundColor: theme.appBg,
@@ -522,7 +590,7 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
               boxShadow: theme.shadowShallow,
               minWidth: valueButtonMinWidth ? `${valueButtonMinWidth}px` : undefined,
               opacity: isValueButtonVisible ? 1 : 0,
-              transition: `opacity ${ANIMATION_STANDARD}ms ${EASING_ELEGANT}`,
+              transition: `opacity ${ANIMATION_DELIBERATE}ms ${EASING_ELEGANT}`,
               pointerEvents: 'none',
             }}
           >

@@ -601,7 +601,7 @@ export async function POST(request: NextRequest) {
     // Validate URL
     if (!url || typeof url !== 'string') {
       return NextResponse.json(
-        { error: 'Please enter a URL' },
+        { error: 'URL required' },
         { status: 400 }
       )
     }
@@ -626,7 +626,7 @@ export async function POST(request: NextRequest) {
 
     if (!match) {
       return NextResponse.json(
-        { error: 'Enter a valid X post URL (x.com/user/status/...)' },
+        { error: 'Invalid URL' },
         { status: 400 }
       )
     }
@@ -665,7 +665,10 @@ export async function POST(request: NextRequest) {
         })
       }
     } catch (e) {
-      console.warn('Syndication scrape failed:', e instanceof Error ? e.message : e)
+      // Log detailed error in development, but don't expose to client
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Syndication scrape failed:', e instanceof Error ? e.message : e)
+      }
     }
 
     // 1b) Brute-force fallback: syndication embed HTML (often works when JSON is brittle)
@@ -688,7 +691,10 @@ export async function POST(request: NextRequest) {
         })
       }
     } catch (e) {
-      console.warn('Syndication embed scrape failed:', e instanceof Error ? e.message : e)
+      // Log detailed error in development, but don't expose to client
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Syndication embed scrape failed:', e instanceof Error ? e.message : e)
+      }
     }
 
     // 2) Fallback: oEmbed (works even for very old posts; text-only, no images).
@@ -718,14 +724,17 @@ export async function POST(request: NextRequest) {
     // Stop here: this API uses the fast syndication + oEmbed endpoints only.
     // Headless browser scraping is intentionally avoided for Vercel reliability.
     return NextResponse.json(
-      { error: 'Could not load post. Try: demo, startup, code, ai, or product' },
+      { error: 'Post unavailable' },
       { status: 503 }
     )
 
   } catch (error: any) {
-    console.error('Scraping error:', error)
+    // Log detailed error in development, but return user-friendly message
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Scraping error:', error)
+    }
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch post' },
+      { error: 'Load failed' },
       { status: 500 }
     )
   }

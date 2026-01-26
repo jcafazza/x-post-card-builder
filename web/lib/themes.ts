@@ -87,6 +87,19 @@ export const themeConfig = {
   },
 }
 
+/**
+ * Retrieves the theme styles object for a given theme.
+ * 
+ * @param theme - The theme identifier ('light', 'dim', or 'dark')
+ * @returns ThemeStyles object containing all color values for the theme
+ * 
+ * @example
+ * ```ts
+ * const styles = getThemeStyles('dark')
+ * console.log(styles.bg) // '#000000'
+ * console.log(styles.textPrimary) // '#FFFFFF'
+ * ```
+ */
 export function getThemeStyles(theme: Theme) {
   return themeConfig[theme]
 }
