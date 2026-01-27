@@ -65,6 +65,8 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+**Dev scripts:** `npm run dev` starts the Next.js dev server (default bundler). Use `npm run dev:turbo` for Turbopack.
+
 ## 📁 Project Structure
 
 ```

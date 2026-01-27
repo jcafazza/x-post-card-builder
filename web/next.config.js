@@ -12,13 +12,8 @@ const nextConfig = {
       },
     ],
   },
-}
-
-// For development server
-if (process.env.NODE_ENV === 'development') {
-  nextConfig.experimental = {
-    ...nextConfig.experimental,
-  }
+  // Stricter React checks in development.
+  reactStrictMode: true,
 }
 
 module.exports = nextConfig

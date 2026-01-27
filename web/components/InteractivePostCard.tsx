@@ -79,6 +79,10 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
   const startWidthRef = useRef<number>(0)
   const startRadiusRef = useRef<number>(0)
   const labelResetTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const widthRafRef = useRef<number | null>(null)
+  const latestMouseXRef = useRef<number>(0)
+  const settingsRef = useRef(settings)
+  settingsRef.current = settings
 
   const theme = getThemeStyles(settings.theme)
 
@@ -105,44 +109,53 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
 
   // Global mouse move/up handling during active drags.
   useEffect(() => {
+    const applyWidthFromMouse = () => {
+      widthRafRef.current = null
+      const currentX = latestMouseXRef.current
+      const deltaX = currentX - startXRef.current
+      let rawWidth: number
+
+      if (resizeTypeRef.current === 'width-left') {
+        rawWidth = startWidthRef.current - deltaX
+      } else {
+        rawWidth = startWidthRef.current + deltaX
+      }
+
+      // Rubberband effect: allow overshoot beyond max or undershoot below min, with resistance
+      const RUBBERBAND_MAX_OVERSHOOT = RUBBERBAND_MAX_OVERSHOOT_PX
+      // Use raw width for smooth visual during drag (no 2px stepping); snap to 2px for committed value
+      const roundedForCommit = Math.round(rawWidth / 2) * 2
+
+      let visualWidthValue: number
+      let clampedWidth: number
+
+      if (roundedForCommit > CARD_MAX_WIDTH) {
+        const overshoot = Math.min(rawWidth - CARD_MAX_WIDTH, RUBBERBAND_MAX_OVERSHOOT)
+        visualWidthValue = CARD_MAX_WIDTH + Math.min(overshoot * 0.5, RUBBERBAND_MAX_OVERSHOOT * 0.5)
+        clampedWidth = CARD_MAX_WIDTH
+      } else if (roundedForCommit < CARD_MIN_WIDTH) {
+        // Same elastic effect as max: allow undershoot below min with 50% resistance
+        const undershoot = Math.min(CARD_MIN_WIDTH - rawWidth, RUBBERBAND_MAX_OVERSHOOT)
+        visualWidthValue = CARD_MIN_WIDTH - Math.min(undershoot * 0.5, RUBBERBAND_MAX_OVERSHOOT * 0.5)
+        clampedWidth = CARD_MIN_WIDTH
+      } else {
+        visualWidthValue = rawWidth // Smooth 1px tracking during drag
+        clampedWidth = roundedForCommit
+      }
+
+      setVisualWidth(visualWidthValue)
+      onSettingsChange({ ...settingsRef.current, cardWidth: clampedWidth })
+      setValueLabel(`${Math.round(visualWidthValue)}px`)
+    }
+
     const handleMouseMove = (e: MouseEvent) => {
       if (isResizingWidth) {
         setGlobalCursor('ew-resize')
-        const deltaX = e.clientX - startXRef.current
-        let rawWidth: number
-
-        if (resizeTypeRef.current === 'width-left') {
-          rawWidth = startWidthRef.current - deltaX
-        } else {
-          rawWidth = startWidthRef.current + deltaX
+        latestMouseXRef.current = e.clientX
+        // Throttle to one update per frame for smooth 60fps without overwhelming React
+        if (widthRafRef.current == null) {
+          widthRafRef.current = requestAnimationFrame(applyWidthFromMouse)
         }
-
-        // Rubberband effect: allow overshoot beyond max with resistance
-        const RUBBERBAND_MAX_OVERSHOOT = RUBBERBAND_MAX_OVERSHOOT_PX
-        const roundedRawWidth = Math.round(rawWidth / 2) * 2
-        
-        let visualWidthValue: number
-        let clampedWidth: number
-
-        if (roundedRawWidth > CARD_MAX_WIDTH) {
-          // Beyond max: apply resistance and allow overshoot up to 30px
-          const overshoot = Math.min(roundedRawWidth - CARD_MAX_WIDTH, RUBBERBAND_MAX_OVERSHOOT)
-          // Resistance: reduce the effect of overshoot (50% resistance)
-          visualWidthValue = CARD_MAX_WIDTH + overshoot * 0.5
-          clampedWidth = CARD_MAX_WIDTH
-        } else if (roundedRawWidth < CARD_MIN_WIDTH) {
-          // Below min: clamp immediately (no rubberband on min)
-          visualWidthValue = CARD_MIN_WIDTH
-          clampedWidth = CARD_MIN_WIDTH
-        } else {
-          // Within bounds: normal behavior
-          visualWidthValue = roundedRawWidth
-          clampedWidth = roundedRawWidth
-        }
-
-        setVisualWidth(visualWidthValue)
-        onSettingsChange({ ...settings, cardWidth: clampedWidth })
-        setValueLabel(`${Math.round(visualWidthValue)}px`)
       } else if (isResizingRadius) {
         const cardRect = cardRef.current?.getBoundingClientRect()
         if (!cardRect) return
@@ -175,18 +188,26 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
     }
 
     const handleMouseUp = () => {
-      // Rubberband snap-back: if visual width exceeds max, animate back to max
-      if (isResizingWidth && visualWidth !== null && visualWidth > CARD_MAX_WIDTH) {
-        // Snap back to max width with bounce animation
-        setVisualWidth(CARD_MAX_WIDTH)
-        // Update settings to ensure it's clamped
-        onSettingsChange({ ...settings, cardWidth: CARD_MAX_WIDTH })
-        // Clear visual width after animation completes
-        setTimeout(() => {
+      // Cancel any pending width rAF so it cannot overwrite snap-back after release
+      if (widthRafRef.current != null) {
+        cancelAnimationFrame(widthRafRef.current)
+        widthRafRef.current = null
+      }
+
+      // Rubberband snap-back: if visual width exceeds max or is below min, animate back to bound
+      if (isResizingWidth && visualWidth !== null) {
+        if (visualWidth > CARD_MAX_WIDTH) {
+          setVisualWidth(CARD_MAX_WIDTH)
+          onSettingsChange({ ...settingsRef.current, cardWidth: CARD_MAX_WIDTH })
+          setTimeout(() => setVisualWidth(null), ANIMATION_STANDARD)
+        } else if (visualWidth < CARD_MIN_WIDTH) {
+          setVisualWidth(CARD_MIN_WIDTH)
+          onSettingsChange({ ...settingsRef.current, cardWidth: CARD_MIN_WIDTH })
+          setTimeout(() => setVisualWidth(null), ANIMATION_STANDARD)
+        } else {
           setVisualWidth(null)
-        }, ANIMATION_STANDARD)
+        }
       } else {
-        // Clear visual width immediately if no snap-back needed
         setVisualWidth(null)
       }
 
@@ -212,6 +233,10 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
     return () => {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
+      if (widthRafRef.current != null) {
+        cancelAnimationFrame(widthRafRef.current)
+        widthRafRef.current = null
+      }
     }
   }, [isResizingWidth, isResizingRadius, hoveredCorner, settings, onSettingsChange, visualWidth])
 
@@ -394,9 +419,13 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
         className="relative"
         style={{
           width: `${visualWidth !== null ? visualWidth : settings.cardWidth}px`,
+          // No transition during active width drag so the card tracks the cursor instantly.
+          // Animate when snapping back from rubberband overshoot (max) or undershoot (min).
           transition: prefersReducedMotion
             ? 'none'
-            : visualWidth !== null && visualWidth > CARD_MAX_WIDTH
+            : isResizingWidth
+            ? 'none'
+            : visualWidth !== null && (visualWidth > CARD_MAX_WIDTH || visualWidth < CARD_MIN_WIDTH)
             ? `width ${ANIMATION_STANDARD}ms ${EASING_BOUNCE}`
             : `width ${ANIMATION_MICRO}ms ${EASING_STANDARD}`,
         }}
