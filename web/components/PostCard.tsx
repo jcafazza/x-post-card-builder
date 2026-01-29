@@ -2,15 +2,16 @@
 
 import { PostData, CardSettings, ShadowIntensity } from '@/types/post'
 import { getThemeStyles } from '@/lib/themes'
-import { formatTimestamp } from '@/lib/utils'
-import { ANIMATION_STANDARD, ANIMATION_DELIBERATE, EASING_STANDARD } from '@/constants/ui'
+import { ANIMATION_DELIBERATE, ANIMATION_STANDARD, EASING_STANDARD } from '@/constants/ui'
 
 interface PostCardProps {
   post: PostData
   settings: CardSettings
+  /** Optional style overrides (e.g. for share page shadow reveal). Merged onto root. */
+  styleOverride?: React.CSSProperties
 }
 
-export default function PostCard({ post, settings }: PostCardProps) {
+export default function PostCard({ post, settings, styleOverride }: PostCardProps) {
   const theme = getThemeStyles(settings.theme)
   const hasImages = post.content.images.length > 0
 
@@ -36,6 +37,12 @@ export default function PostCard({ post, settings }: PostCardProps) {
     ? `${settings.customBorderRadius}px`
     : undefined
 
+  // Nested radii for all image corners that touch the card content boundary (concentric with card corners)
+  const CARD_PADDING = 24 // p-6
+  const IMAGE_DEFAULT_RADIUS = 16 // rounded-2xl
+  const cardRadiusPx = settings.customBorderRadius ?? parseInt(settings.borderRadius, 10)
+  const nestedRadius = hasImages ? Math.max(0, cardRadiusPx - CARD_PADDING) : IMAGE_DEFAULT_RADIUS
+
   return (
     <div
       id="card-preview"
@@ -47,6 +54,7 @@ export default function PostCard({ post, settings }: PostCardProps) {
         borderColor: theme.border,
         borderRadius: borderRadius,
         transition: `height ${ANIMATION_DELIBERATE}ms ${EASING_STANDARD}, box-shadow ${ANIMATION_DELIBERATE}ms ${EASING_STANDARD}, border-color ${ANIMATION_STANDARD}ms ${EASING_STANDARD}, background-color ${ANIMATION_STANDARD}ms ${EASING_STANDARD}`,
+        ...styleOverride,
       }}
     >
       {/* Author Section */}
@@ -108,7 +116,7 @@ export default function PostCard({ post, settings }: PostCardProps) {
       </div>
 
       {/* Content Section */}
-      <div className={hasImages || settings.showDate ? 'mb-4' : 'mb-0'}>
+      <div className={hasImages ? 'mb-4' : 'mb-0'}>
         <p
           className="text-base whitespace-pre-wrap break-words"
           style={{ color: theme.textPrimary }}
@@ -119,20 +127,20 @@ export default function PostCard({ post, settings }: PostCardProps) {
 
       {/* Images Section */}
       {hasImages && (
-        <div className={`${settings.showDate ? 'mb-4' : 'mb-0'} -mx-6 px-6`}>
+        <div className="-mx-6 px-6">
           <div className={`grid gap-2 ${post.content.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
             {post.content.images.map((image, index) => {
-              const isThirdImage = post.content.images.length === 3 && index === 2
+              const count = post.content.images.length
+              const isThirdImage = count === 3 && index === 2
+              // Every corner uses nested radius (concentric with card: inner = cardRadius - padding)
+              const imageBorderRadius = `${nestedRadius}px`
               return (
                 <div
                   key={index}
-                  className={`relative w-full overflow-hidden rounded-2xl ${isThirdImage ? 'col-span-2' : ''}`}
+                  className={`relative w-full overflow-hidden ${isThirdImage ? 'col-span-2' : ''}`}
                   style={{
-                    aspectRatio: post.content.images.length === 1 
-                      ? '16/9' 
-                      : isThirdImage 
-                        ? '16/9' 
-                        : '1',
+                    borderRadius: imageBorderRadius,
+                    aspectRatio: count === 1 ? '16/9' : isThirdImage ? '16/9' : '1',
                     maxHeight: '180px',
                   }}
                 >
@@ -145,10 +153,13 @@ export default function PostCard({ post, settings }: PostCardProps) {
                     crossOrigin="anonymous"
                     referrerPolicy="no-referrer"
                   />
-                  {/* Subtle inner stroke overlay (stays visible above the image) */}
+                  {/* Subtle inner stroke overlay (matches wrapper radius) */}
                   <div
-                    className="pointer-events-none absolute inset-0 rounded-2xl"
-                    style={{ boxShadow: `inset 0 0 0 1px ${theme.imageInnerStroke}` }}
+                    className="pointer-events-none absolute inset-0"
+                    style={{
+                      borderRadius: imageBorderRadius,
+                      boxShadow: `inset 0 0 0 1px ${theme.imageInnerStroke}`,
+                    }}
                   />
                 </div>
               )
@@ -156,25 +167,6 @@ export default function PostCard({ post, settings }: PostCardProps) {
           </div>
         </div>
       )}
-
-      {/* Timestamp Section */}
-      <div 
-        className="overflow-hidden"
-        style={{
-          maxHeight: settings.showDate ? '100px' : '0px',
-          transition: `max-height ${ANIMATION_DELIBERATE}ms ${EASING_STANDARD}, opacity ${ANIMATION_STANDARD}ms ${EASING_STANDARD}, padding-top ${ANIMATION_DELIBERATE}ms ${EASING_STANDARD}`,
-          opacity: settings.showDate ? 1 : 0,
-          paddingTop: settings.showDate ? '12px' : '0px',
-          borderTop: settings.showDate ? `1px solid ${theme.border}` : '1px solid transparent',
-        }}
-      >
-        <span
-          className="text-sm block"
-          style={{ color: theme.textTertiary }}
-        >
-          {formatTimestamp(post.timestamp)}
-        </span>
-      </div>
 
     </div>
   )

@@ -110,6 +110,30 @@ body {
   animation-name: slide-in-from-right-1;
 }
 
+/* Share page card entrance: fade + slide from below viewport, 2s, landing ease */
+@keyframes share-card-entrance {
+  from {
+    opacity: 0;
+    transform: translateY(100vh);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.share-card-entrance {
+  animation: share-card-entrance 2000ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .share-card-entrance {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .delay-150 {
   animation-delay: 150ms;
 }

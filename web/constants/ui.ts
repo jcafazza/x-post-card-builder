@@ -45,6 +45,20 @@ export const ANIMATION_EXTENDED = 1000
 /** Duration for successful "Imported" state feedback */
 export const SUCCESS_STATE_DURATION = 800
 
+/** Minimum time to show "Vibin' & cookin'…" loading state on share page (ms) */
+export const SHARE_LOADING_MIN_MS = 1500
+
+/** Share page card entrance: duration (ms) and vertical offset (px) from bottom */
+export const SHARE_CARD_ENTRANCE_MS = 1000
+export const SHARE_CARD_ENTRANCE_OFFSET_PX = 40
+
+/** Share page phase 2: delay after card lands (ms), then shadow + button animate in over SHARE_PHASE2_DURATION_MS. Must match .share-card-entrance duration in app/globals.css (2000ms). */
+export const SHARE_PHASE2_DELAY_MS = 2000
+export const SHARE_PHASE2_DURATION_MS = 600
+
+/** Landing ease: decelerate into place (share card entrance) */
+export const EASING_LANDING = 'cubic-bezier(0.16, 1, 0.3, 1)'
+
 // ─────────────────────────────────────────────────────────────────────────────
 // EASING CURVES
 // ─────────────────────────────────────────────────────────────────────────────
@@ -92,7 +106,7 @@ export const ENTRANCE_DELAY_CARD = 400
 export const BUTTON_SIZE = 44
 
 /** Padding for input button (right side) in pixels */
-export const INPUT_BUTTON_PADDING_RIGHT = 65
+export const INPUT_BUTTON_PADDING_RIGHT = 58
 
 /** Top padding for main content area below header (in pixels) */
 export const HEADER_CONTENT_PADDING_TOP = 148

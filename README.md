@@ -1,6 +1,6 @@
 # X Post Card Builder
 
-Transform public X (Twitter) posts into beautiful, customizable visual cards. Built for designers who want **aesthetic control** (theme, radius, shadows) and **reliable export**.
+Transform public X (Twitter) posts into **beautiful, customizable visual cards**—no API keys, no login. Built for designers who want full **aesthetic control** (theme, radius, shadows) and **reliable export**.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
@@ -8,15 +8,11 @@ Transform public X (Twitter) posts into beautiful, customizable visual cards. Bu
 
 ## ✨ Features
 
-- **📥 Import**: Paste any public `x.com/.../status/...` URL to instantly load the post
-- **🎨 Customization**: 
-  - Drag to resize card width and corner radius
-  - Switch between light, dim, and dark themes
-  - Adjust shadow intensity (flat, raised, floating, elevated)
-  - Toggle timestamp display
-- **💾 Export**: Download high-quality PNG images (2x resolution)
-- **🔗 Share**: Generate shareable URLs that preserve your customizations
-- **♿ Accessible**: WCAG 2.1 compliant with reduced motion support
+- **📥 Import** — Paste any public `x.com/.../status/...` URL to load the post
+- **🎨 Customize** — Resize width and corner radius; switch light/dim/dark themes; set shadow intensity (flat → elevated)
+- **💾 Export** — Download high-quality PNG (2× resolution) for social or docs
+- **🔗 Share** — Copy a link that preserves your settings; share page matches your theme and layout
+- **♿ Accessible** — WCAG 2.1–aligned, reduced motion supported
 
 ## 🚀 Quick Start
 
@@ -50,10 +46,10 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 That's it! The UI and API routes ship together.
 
-## How it works (reliability-first)
+## How it works
 
-- **Scraping**: Uses Twitter’s syndication endpoints (`cdn.syndication.twimg.com`) with a tokenized request, plus an HTML embed fallback.
-- **Image proxy**: All remote media is served through `web/app/api/image` to avoid CORS issues and make export consistent.
+- **Scraping** — X’s syndication endpoints (`cdn.syndication.twimg.com`) with tokenized request + HTML embed fallback; no API keys.
+- **Image proxy** — Remote media via `web/app/api/image` for same-origin loading and reliable PNG export.
 
 ## Local development
 
@@ -99,16 +95,11 @@ Contributions are welcome! Please read our [Contributing Guide](./CONTRIBUTING.m
 - Pull request process
 - Reporting issues
 
-## 📝 License
+## Tech & License
 
-This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Built with [Next.js](https://nextjs.org/)
-- Deployed on [Vercel](https://vercel.com/)
-- Uses [html2canvas](https://github.com/niklasvh/html2canvas) for PNG export
+- [Next.js](https://nextjs.org/) (App Router), [React](https://react.dev/), [TypeScript](https://www.typescriptlang.org/), [Tailwind CSS](https://tailwindcss.com/), [html2canvas](https://github.com/niklasvh/html2canvas). Deploy anywhere (e.g. [Vercel](https://vercel.com/)).
+- **License:** MIT — see [LICENSE](./LICENSE).
 
 ---
 
-**Made with ❤️ by [John Cafazza](https://github.com/johncafazza)**
+**[John Cafazza](https://github.com/johncafazza)** · X Post Card Builder

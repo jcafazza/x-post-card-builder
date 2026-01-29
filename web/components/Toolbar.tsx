@@ -11,7 +11,6 @@ import {
   Code,
   Layers2,
   RotateCcw,
-  Calendar,
   Download,
   Link,
   Share,
@@ -37,7 +36,7 @@ interface ToolbarProps {
 
 /**
  * Main Toolbar component providing customization controls and sharing actions.
- * Groups controls into Theme/Shadow/Date (left) and Reset/Share (right).
+ * Groups controls into Theme/Shadow (left) and Reset/Share (right).
  */
 export default function Toolbar({ settings, onSettingsChange, currentTheme, onReset, cardWidth, sourceUrl }: ToolbarProps) {
   const [isExporting, setIsExporting] = useState(false)
@@ -166,11 +165,6 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
     onReset()
   }
 
-  const handleDateToggle = () => {
-    animateButtonPress('date')
-    onSettingsChange({ ...settings, showDate: !settings.showDate })
-  }
-
   const shadowOpacityMap: Record<ShadowIntensity, number> = {
     flat: 0.5,
     raised: 0.7,
@@ -226,7 +220,6 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
     shareUrl.searchParams.set('url', sourceUrl)
     shareUrl.searchParams.set('theme', settings.theme)
     shareUrl.searchParams.set('shadow', settings.shadowIntensity)
-    shareUrl.searchParams.set('showDate', settings.showDate ? '1' : '0')
     shareUrl.searchParams.set('cardWidth', String(settings.cardWidth))
     if (settings.customBorderRadius !== undefined) {
       shareUrl.searchParams.set('radius', String(settings.customBorderRadius))
@@ -292,20 +285,6 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
               style={{ opacity: shadowOpacityMap[settings.shadowIntensity] }}
               aria-hidden="true"
             />
-          </button>
-
-          <button
-            type="button"
-            onClick={handleDateToggle}
-            onMouseEnter={() => setHoveredButton('date')}
-            onMouseLeave={() => setHoveredButton(null)}
-            onFocus={() => setFocusedButton('date')}
-            onBlur={() => setFocusedButton(null)}
-            className={buttonBase}
-            style={getButtonStyle('date', settings.showDate, hoveredButton === 'date', focusedButton === 'date')}
-            aria-label="Toggle Date"
-          >
-            <Calendar className={iconClasses} strokeWidth={1.5} aria-hidden="true" />
           </button>
         </div>
 

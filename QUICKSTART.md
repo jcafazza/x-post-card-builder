@@ -1,8 +1,8 @@
 # Quickstart
 
-Get the X Post Card Builder running locally, then deploy it to Vercel.
+Get X Post Card Builder running locally, then deploy.
 
-## Local (2 minutes)
+## Local
 
 ```bash
 cd web
@@ -10,12 +10,12 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open [http://localhost:3000](http://localhost:3000). Paste a public `x.com/.../status/...` URL to load a post; use the toolbar to customize and export PNG or copy a share link.
 
-## Deploy to Vercel
+## Deploy (Vercel)
 
-- Import the repo into Vercel as a **Next.js** project
-- Set the **Root Directory** to `web`
-- Deploy
+1. Import the repo as a **Next.js** project
+2. Set **Root Directory** to `web`
+3. Deploy
 
-That’s it — the UI and API routes (`/api/scrape-post`, `/api/image`) ship together.
+UI and API routes (`/api/scrape-post`, `/api/image`) ship together.

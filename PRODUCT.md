@@ -38,9 +38,6 @@ Unlike existing tools that focus on screenshot generation for social sharing, th
 - Server-side scraping of post content (no X API required)
 
 #### Customization Controls
-**Toggle Options:**
-- Creation date/timestamp - on/off
-
 **Design Controls:**
 - Theme selection (dropdown): "light", "dim", "dark"
 - Card border radius (dropdown): 0px, 8px, 16px, 20px, 24px
@@ -52,7 +49,6 @@ Unlike existing tools that focus on screenshot generation for social sharing, th
 - Author handle (@username)
 - Post text content
 - Attached images (if present)
-- Timestamp (conditionally shown)
 
 #### Export Options
 

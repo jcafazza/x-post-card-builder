@@ -17,8 +17,17 @@ import { PostData } from '@/types/post'
  * }
  * ```
  */
+function getApiBase(): string {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin
+  }
+  return ''
+}
+
 export async function fetchPostData(url: string): Promise<PostData> {
-  const response = await fetch('/api/scrape-post', {
+  const base = getApiBase()
+  const apiUrl = base ? `${base}/api/scrape-post` : '/api/scrape-post'
+  const response = await fetch(apiUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

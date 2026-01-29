@@ -96,13 +96,15 @@ export async function exportElementToPNG(
   overflowElements.forEach((el) => {
     const elHtml = el as HTMLElement
     // Check if element has rounded corners - these need overflow-hidden to work
+    const computedRadius = elHtml.style?.borderRadius || window.getComputedStyle(elHtml).borderRadius
     const hasRoundedCorners = elHtml.classList.contains('rounded-full') || 
                              elHtml.classList.contains('rounded-2xl') ||
                              elHtml.classList.contains('rounded-card-0') ||
                              elHtml.classList.contains('rounded-card-8') ||
                              elHtml.classList.contains('rounded-card-16') ||
                              elHtml.classList.contains('rounded-card-20') ||
-                             elHtml.classList.contains('rounded-card-24')
+                             elHtml.classList.contains('rounded-card-24') ||
+                             (computedRadius && computedRadius !== '0px')
     
     // Only remove overflow-hidden if element doesn't have rounded corners
     if (!hasRoundedCorners) {
@@ -161,13 +163,15 @@ export async function exportElementToPNG(
               descEl.style.boxShadow = 'none'
               
               // Check if element has rounded corners (avatar or image container)
+              const descRadius = descEl.style?.borderRadius || window.getComputedStyle(descEl).borderRadius
               const hasRoundedCorners = descEl.classList.contains('rounded-full') || 
                                        descEl.classList.contains('rounded-2xl') ||
                                        descEl.classList.contains('rounded-card-0') ||
                                        descEl.classList.contains('rounded-card-8') ||
                                        descEl.classList.contains('rounded-card-16') ||
                                        descEl.classList.contains('rounded-card-20') ||
-                                       descEl.classList.contains('rounded-card-24')
+                                       descEl.classList.contains('rounded-card-24') ||
+                                       (descRadius && descRadius !== '0px')
               
               // Only modify overflow if element doesn't have rounded corners
               // Rounded corners need overflow-hidden to clip content properly
@@ -189,6 +193,7 @@ export async function exportElementToPNG(
               
               // Remove maxHeight constraints that might clip content (but preserve for images)
               const isImageContainer = descEl.classList.contains('rounded-2xl') || 
+                                      (descRadius && descRadius !== '0px' && descEl.querySelector('img') !== null) ||
                                       descEl.querySelector('img') !== null
               if (!isImageContainer) {
                 const computedMaxHeight = window.getComputedStyle(descEl).maxHeight

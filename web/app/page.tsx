@@ -10,6 +10,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { PostData, CardSettings } from '@/types/post'
 import { getDefaultPlaceholder } from '@/lib/placeholder'
 import { getThemeStyles } from '@/lib/themes'
+import { hexToRgba } from '@/lib/utils'
 import {
   ANIMATION_STANDARD,
   ANIMATION_DELIBERATE,
@@ -32,7 +33,7 @@ const INITIAL_SETTINGS: CardSettings = {
   theme: 'light',
   borderRadius: '20',
   shadowIntensity: 'floating',
-  showDate: true,
+  showDate: false,
   cardWidth: 500,
   customBorderRadius: 20,
 }
@@ -56,38 +57,6 @@ export default function Home() {
   }
 
   const theme = getThemeStyles(settings.theme)
-
-  // Helper to convert hex to rgba with opacity
-  // Handles both #RGB and #RRGGBB formats, with validation
-  const hexToRgba = (hex: string, opacity: number): string => {
-    if (!hex || !hex.startsWith('#')) {
-      // Fallback to original hex if invalid format
-      return hex || '#000000'
-    }
-    
-    let r: number, g: number, b: number
-    if (hex.length === 4) {
-      // #RGB format - expand to #RRGGBB
-      r = parseInt(hex[1] + hex[1], 16)
-      g = parseInt(hex[2] + hex[2], 16)
-      b = parseInt(hex[3] + hex[3], 16)
-    } else if (hex.length === 7) {
-      // #RRGGBB format
-      r = parseInt(hex.slice(1, 3), 16)
-      g = parseInt(hex.slice(3, 5), 16)
-      b = parseInt(hex.slice(5, 7), 16)
-    } else {
-      // Invalid format - return original
-      return hex
-    }
-    
-    // Validate parsed values
-    if (isNaN(r) || isNaN(g) || isNaN(b)) {
-      return hex
-    }
-    
-    return `rgba(${r}, ${g}, ${b}, ${opacity})`
-  }
 
   // Header is fixed at top-6 (24px) with height 68px (44px input + 12px top padding + 12px bottom padding)
   // Header bottom edge: 24px (top) + 68px (height) = 92px
