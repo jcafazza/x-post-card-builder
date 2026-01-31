@@ -593,6 +593,16 @@ function extractDateFromOEmbedHtml(html: string): string | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
 }
 
+/** CORS headers for public API access (required for x-post-card-visualizer npm package) */
+function corsHeaders(): HeadersInit {
+  const allowedOrigin = process.env.ALLOWED_ORIGIN || '*'
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -602,7 +612,7 @@ export async function POST(request: NextRequest) {
     if (!url || typeof url !== 'string') {
       return NextResponse.json(
         { error: 'URL required' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders() }
       )
     }
 
@@ -617,7 +627,7 @@ export async function POST(request: NextRequest) {
           // Keep demo mode consistent with production: proxy remote images so export works reliably.
           avatar: proxyImageUrl(sample.author.avatar),
         },
-      })
+      }, { headers: corsHeaders() })
     }
 
     // Validate it's an X/Twitter URL
@@ -627,7 +637,7 @@ export async function POST(request: NextRequest) {
     if (!match) {
       return NextResponse.json(
         { error: 'Invalid URL' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders() }
       )
     }
 
@@ -662,7 +672,7 @@ export async function POST(request: NextRequest) {
           author: { name, handle, avatar: proxyImageUrl(avatarRaw), verified },
           content: { text, images: proxyImageUrls(images) },
           timestamp,
-        })
+        }, { headers: corsHeaders() })
       }
     } catch (e) {
       // Log detailed error in development, but don't expose to client
@@ -688,7 +698,7 @@ export async function POST(request: NextRequest) {
           },
           content: { text, images: proxyImageUrls(images) },
           timestamp: new Date().toISOString(),
-        })
+        }, { headers: corsHeaders() })
       }
     } catch (e) {
       // Log detailed error in development, but don't expose to client
@@ -715,40 +725,36 @@ export async function POST(request: NextRequest) {
           },
           content: { text, images: [] },
           timestamp: timestamp || new Date().toISOString(),
-        })
+        }, { headers: corsHeaders() })
       }
     } catch (e) {
-      console.warn('oEmbed scrape failed:', e instanceof Error ? e.message : e)
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('oEmbed scrape failed:', e instanceof Error ? e.message : e)
+      }
     }
 
     // Stop here: this API uses the fast syndication + oEmbed endpoints only.
     // Headless browser scraping is intentionally avoided for Vercel reliability.
     return NextResponse.json(
       { error: 'Post unavailable' },
-      { status: 503 }
+      { status: 503, headers: corsHeaders() }
     )
 
-  } catch (error: any) {
-    // Log detailed error in development, but return user-friendly message
+  } catch (error: unknown) {
     if (process.env.NODE_ENV === 'development') {
-      console.error('Scraping error:', error)
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('Scraping error:', message)
     }
     return NextResponse.json(
       { error: 'Load failed' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders() }
     )
   }
 }
 
 export async function OPTIONS() {
-  const allowedOrigin = process.env.ALLOWED_ORIGIN || '*'
-
   return new NextResponse(null, {
     status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': allowedOrigin,
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
+    headers: corsHeaders(),
   })
 }

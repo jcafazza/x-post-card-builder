@@ -1,0 +1,59 @@
+{
+  "name": "x-post-card-visualizer",
+  "version": "0.1.0",
+  "description": "Embed beautifully styled X (Twitter) post cards in your React app",
+  "author": "John Cafazza",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/johncafazza/x-post-card-visualizer"
+  },
+  "homepage": "https://github.com/johncafazza/x-post-card-visualizer#readme",
+  "keywords": [
+    "react",
+    "twitter",
+    "x",
+    "embed",
+    "card",
+    "social",
+    "component"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0"
+  }
+}

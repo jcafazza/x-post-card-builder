@@ -128,7 +128,7 @@ function prepareCloneForCapture(
  */
 export async function exportElementToPNG(
   elementId: string,
-  filename: string = 'x-post-card.png'
+  filename: string = 'x-post-card-visualizer.png'
 ): Promise<void> {
   const element = document.getElementById(elementId)
   if (!element) {

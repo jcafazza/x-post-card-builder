@@ -7,6 +7,8 @@ import InteractivePostCard from '@/components/InteractivePostCard'
 import Toolbar from '@/components/Toolbar'
 import URLInput from '@/components/URLInput'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import SnippetModal from '@/components/SnippetModal'
+import { buildSnippet } from '@/lib/snippet'
 import { PostData, CardSettings } from '@/types/post'
 import { getDefaultPlaceholder } from '@/lib/placeholder'
 import { getThemeStyles } from '@/lib/themes'
@@ -46,7 +48,14 @@ export default function Home() {
   const [settings, setSettings] = useState<CardSettings>(INITIAL_SETTINGS)
   const [logoAnimation, setLogoAnimation] = useState(false)
   const [toolbarOpacity, setToolbarOpacity] = useState(1)
+  const [snippetDrawerOpen, setSnippetDrawerOpen] = useState(false)
+  const [snippetModalKey, setSnippetModalKey] = useState(0)
   const prefersReducedMotion = useReducedMotion()
+
+  const openSnippetModal = () => {
+    setSnippetModalKey((k) => k + 1)
+    setSnippetDrawerOpen(true)
+  }
   const mainRef = useRef<HTMLElement>(null)
   const toolbarRef = useRef<HTMLDivElement>(null)
 
@@ -228,6 +237,7 @@ export default function Home() {
               onReset={handleReset}
               cardWidth={settings.cardWidth}
               sourceUrl={sourceUrl}
+              onCopySnippetClick={openSnippetModal}
             />
           </div>
 
@@ -286,6 +296,15 @@ export default function Home() {
           }}
         />
       </div>
+
+      {/* Snippet modal: key resets on each open so entrance animation runs fresh every time */}
+      <SnippetModal
+        key={snippetModalKey}
+        isOpen={snippetDrawerOpen}
+        onClose={() => setSnippetDrawerOpen(false)}
+        snippet={buildSnippet(settings, sourceUrl)}
+        theme={theme}
+      />
 
       {/* Privacy note */}
       <div

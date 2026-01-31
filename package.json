@@ -2,10 +2,15 @@
   "name": "x-post-card-visualizer-workspace",
   "version": "1.0.0",
   "private": true,
-  "description": "Workspace root for X Post Card Visualizer. All dependencies are in web/package.json",
+  "description": "Workspace root for X Post Card Visualizer",
+  "workspaces": [
+    "web",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "cd web && npm run dev",
     "build": "cd web && npm run build",
+    "build:package": "cd packages/x-post-card-visualizer && npm run build",
     "start": "cd web && npm run start",
     "lint": "cd web && npm run lint",
     "deploy": "cd web && vercel --prod"

@@ -134,8 +134,103 @@ body {
   }
 }
 
+/* Snippet modal: entrance/exit choreography (matches constants in ui.ts) */
+@keyframes snippet-modal-backdrop-enter {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0);
+    -webkit-backdrop-filter: blur(0);
+  }
+  to {
+    opacity: 0.8;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+}
+
+@keyframes snippet-modal-backdrop-exit {
+  from {
+    opacity: 0.8;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  to {
+    opacity: 0;
+    backdrop-filter: blur(0);
+    -webkit-backdrop-filter: blur(0);
+  }
+}
+
+@keyframes snippet-modal-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(100vh);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes snippet-modal-panel-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(100vh);
+  }
+}
+
+.snippet-modal-backdrop-enter {
+  animation: snippet-modal-backdrop-enter 500ms cubic-bezier(0.45, 0, 0.15, 1) both;
+}
+
+.snippet-modal-backdrop-exit {
+  animation: snippet-modal-backdrop-exit 400ms cubic-bezier(0.45, 0, 0.15, 1) forwards;
+}
+
+.snippet-modal-panel-enter {
+  animation: snippet-modal-panel-enter 600ms cubic-bezier(0.45, 0, 0.15, 1) 100ms both;
+}
+
+.snippet-modal-panel-exit {
+  animation: snippet-modal-panel-exit 600ms cubic-bezier(0.45, 0, 0.15, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .snippet-modal-backdrop-enter,
+  .snippet-modal-backdrop-exit,
+  .snippet-modal-panel-enter,
+  .snippet-modal-panel-exit {
+    animation: none;
+  }
+  .snippet-modal-backdrop-enter,
+  .snippet-modal-panel-enter {
+    opacity: 0.8;
+  }
+  .snippet-modal-backdrop-enter {
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  .snippet-modal-panel-enter {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .delay-150 {
   animation-delay: 150ms;
+}
+
+/* Hide scrollbar but keep horizontal scroll (e.g. API Type column) */
+.scrollbar-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
 }
 
 /* Screen reader only - visually hidden but accessible to assistive tech */

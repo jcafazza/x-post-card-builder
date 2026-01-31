@@ -120,3 +120,9 @@ export const FOOTER_FADE_STOP = 0.25
 
 /** Extra padding below card/button so they can scroll fully behind the footer on small viewports. Used with FOOTER_FADE_HEIGHT. */
 export const FOOTER_SCROLL_CLEAR_EXTRA = 64
+
+/** Padding around modal content (matches Tailwind p-6). Used for left/right and bottom edge spacing. */
+export const MODAL_CONTENT_PADDING = 24
+
+/** Small spacing (matches Tailwind p-3 / space-3). Used for modal content top extra, tight gaps. */
+export const SPACING_SMALL = 12

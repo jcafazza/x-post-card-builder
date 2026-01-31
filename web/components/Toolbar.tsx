@@ -34,13 +34,14 @@ interface ToolbarProps {
   onReset: () => void
   cardWidth: number
   sourceUrl: string | null
+  onCopySnippetClick?: () => void
 }
 
 /**
  * Main Toolbar component providing customization controls and sharing actions.
  * Groups controls into Theme/Shadow (left) and Reset/Share (right).
  */
-export default function Toolbar({ settings, onSettingsChange, currentTheme, onReset, cardWidth, sourceUrl }: ToolbarProps) {
+export default function Toolbar({ settings, onSettingsChange, currentTheme, onReset, cardWidth, sourceUrl, onCopySnippetClick }: ToolbarProps) {
   const [isExporting, setIsExporting] = useState(false)
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
@@ -122,7 +123,7 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
     animateButtonPress('share')
 
     try {
-      await exportElementToPNG('card-preview', 'x-post-card.png')
+      await exportElementToPNG('card-preview', 'x-post-card-visualizer.png')
       
       // Inline success feedback in the menu
       setIsExported(true)
@@ -379,6 +380,19 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
                 </BloomMenu.Item>
 
                 <BloomMenu.Item
+                  onSelect={() => {
+                    setIsShareMenuOpen(false)
+                    onCopySnippetClick?.()
+                  }}
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${menuText} ${menuHoverBg}`}
+                >
+                  <Code className="w-4 h-4" strokeWidth={1.8} aria-hidden="true" />
+                  <span className="flex-1">View code</span>
+                </BloomMenu.Item>
+
+                <div className="h-px my-1 mx-1" style={{ backgroundColor: currentTheme.border, opacity: 0.6 }} />
+
+                <BloomMenu.Item
                   disabled={isExporting}
                   onSelect={handleExportAsPNG}
                   className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${menuText} ${menuHoverBg} disabled:opacity-50`}
@@ -392,18 +406,6 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
                   )}
                   <span className="flex-1">{isExported ? 'Exported!' : 'Export as PNG'}</span>
                   {!isExported && <span className="text-[11px] font-semibold opacity-60">Beta</span>}
-                </BloomMenu.Item>
-
-                <div className="h-px my-1 mx-1" style={{ backgroundColor: currentTheme.border, opacity: 0.6 }} />
-
-                <BloomMenu.Item
-                  disabled
-                  onSelect={() => {}}
-                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${menuText} ${menuHoverBg} opacity-50`}
-                >
-                  <Code className="w-4 h-4" strokeWidth={1.8} aria-hidden="true" />
-                  <span className="flex-1">Copy snippet</span>
-                  <span className="text-[11px] font-semibold opacity-60">Soon</span>
                 </BloomMenu.Item>
               </BloomMenu.Content>
             </BloomMenu.Container>
